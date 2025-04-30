@@ -74,10 +74,10 @@ func (s *ScoreboardService) GetContest(contestID string) (*model.Contest, error)
 }
 
 // GetScoreboard 获取比赛记分板
-func (s *ScoreboardService) GetScoreboard(contestID, group string) ([]*model.Result, error) { 
+func (s *ScoreboardService) GetScoreboard(contestID, group string) ([]*model.Result, *model.Contest, error) {
 	contest, err := s.GetContest(contestID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var results []*model.Result
@@ -87,7 +87,7 @@ func (s *ScoreboardService) GetScoreboard(contestID, group string) ([]*model.Res
 		results = contest.GetFilteredResults(group)
 	}
 
-	return results, nil
+	return results, contest, nil
 }
 
 // GetContestGroups 获取比赛的所有分组

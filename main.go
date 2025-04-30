@@ -28,7 +28,6 @@ func main() {
 	// 注册路由处理器
 	http.HandleFunc("/", handler.IndexHandler(scoreSvc))
 	http.HandleFunc("/contest/", handler.ContestHandler(scoreSvc))
-	http.HandleFunc("/api/contests", handler.ListContestsHandler(scoreSvc))
 	http.HandleFunc("/api/scoreboard/", handler.ScoreboardHandler(scoreSvc))
 
 	// 启动服务器

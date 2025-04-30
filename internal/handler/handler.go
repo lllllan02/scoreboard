@@ -97,14 +97,6 @@ func ContestHandler(svc *service.ScoreboardService) http.HandlerFunc {
 	}
 }
 
-// ListContestsHandler 处理获取比赛列表的API请求
-func ListContestsHandler(svc *service.ScoreboardService) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		contests := svc.GetAllContests()
-		respondJSON(w, http.StatusOK, contests)
-	}
-}
-
 // ScoreboardHandler 处理获取记分板数据的API请求
 func ScoreboardHandler(svc *service.ScoreboardService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -123,8 +115,8 @@ func ScoreboardHandler(svc *service.ScoreboardService) http.HandlerFunc {
 		group := r.URL.Query().Get("group")
 		log.Printf("过滤组别: %s", group)
 
-		// 获取记分板数据
-		results, err := svc.GetScoreboard(contestID, group)
+		// 获取记分板数据和比赛对象（一次性获取，避免重复调用）
+		results, contest, err := svc.GetScoreboard(contestID, group)
 		if err != nil {
 			log.Printf("获取记分板数据失败: %v", err)
 			if strings.Contains(err.Error(), "not found") {
@@ -137,15 +129,7 @@ func ScoreboardHandler(svc *service.ScoreboardService) http.HandlerFunc {
 
 		log.Printf("获取到 %d 条结果记录", len(results))
 
-		// 获取比赛对象以包含更多信息
-		contest, err := svc.GetContest(contestID)
-		if err != nil {
-			log.Printf("获取比赛信息失败: %v", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		// 直接返回完整的contest对象和结果，无需额外封装
+		// 直接返回完整的contest对象和结果
 		response := map[string]interface{}{
 			"contest": contest,
 			"results": results,
