@@ -1,0 +1,123 @@
+/* 全局样式 */
+body {
+    font-family: 'Microsoft YaHei', sans-serif;
+    background-color: #f8f9fa;
+}
+
+.container-fluid {
+    max-width: 1600px;
+}
+
+/* 比赛标题 */
+.contest-title {
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+}
+
+.contest-details {
+    margin-bottom: 1rem;
+}
+
+/* 计时器样式 */
+.timer-container {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1.5rem;
+}
+
+.timer-item {
+    text-align: center;
+}
+
+.timer-label {
+    font-size: 0.8rem;
+    color: #6c757d;
+}
+
+.timer-value {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+/* 记分板样式 */
+.problem-column {
+    min-width: 80px;
+}
+
+.scoreboard-row:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+/* 题目状态单元格 */
+.problem-cell {
+    text-align: center;
+    padding: 0.5rem;
+    position: relative;
+}
+
+.problem-solved {
+    background-color: #d4edda;
+}
+
+.problem-failed {
+    background-color: #f8d7da;
+}
+
+.problem-pending {
+    background-color: #fff3cd;
+}
+
+.problem-first-to-solve {
+    position: relative;
+}
+
+.problem-first-to-solve::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    border-style: solid;
+    border-width: 0 12px 12px 0;
+    border-color: transparent #28a745 transparent transparent;
+}
+
+/* 徽章样式 */
+.team-badge {
+    display: inline-block;
+    padding: 0.25em 0.4em;
+    font-size: 75%;
+    font-weight: 700;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 0.25rem;
+    margin-left: 0.25rem;
+}
+
+.team-badge-undergrad {
+    background-color: #fd7e14;
+    color: white;
+}
+
+.team-badge-girl {
+    background-color: #e83e8c;
+    color: white;
+}
+
+.team-badge-vocational {
+    background-color: #6f42c1;
+    color: white;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .timer-container {
+        justify-content: flex-start;
+        margin-top: 1rem;
+    }
+    
+    .problem-column {
+        min-width: 60px;
+    }
+} 
