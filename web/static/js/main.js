@@ -2,17 +2,15 @@
  * 通用JavaScript功能
  */
 
-// 格式化时间
-function formatDuration(seconds) {
-    if (seconds < 0) {
-        return "0:00:00";
+// 格式化时间为分钟数
+function formatDuration(milliseconds) {
+    if (milliseconds < 0) {
+        return "0";
     }
     
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-    
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    // 将毫秒转换为分钟，四舍五入到整数
+    const totalMinutes = Math.round((milliseconds / 1000) / 60);
+    return totalMinutes.toString();
 }
 
 // 格式化日期

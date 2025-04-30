@@ -104,6 +104,42 @@ body {
     vertical-align: middle;
 }
 
+/* 单元格内容样式 */
+.result-status {
+    font-size: 1.1rem;
+    font-weight: bold;
+    line-height: 1;
+    margin-bottom: 0.1rem;
+}
+
+.result-details {
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+/* 通过题目单元格中的加号 */
+.problem-solved .result-status {
+    color: #28a745;
+}
+
+/* 未通过题目单元格中的减号 */
+.problem-failed .result-status {
+    color: #dc3545;
+}
+
+/* 待定题目单元格中的问号 */
+.problem-pending .result-status {
+    color: #ffc107;
+}
+
+/* 罚时信息样式 */
+.penalty-info {
+    color: #c03a3a;
+    font-weight: 500;
+    font-size: 0.7rem;
+    margin-top: 0.1rem;
+}
+
 .problem-solved {
     background-color: #d4edda;
 }

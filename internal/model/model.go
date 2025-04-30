@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 )
 
 // Contest 表示一个比赛
@@ -288,7 +289,12 @@ func (c *Contest) CalculateResults() ([]*Result, error) {
 		}
 
 		// 检查是否在封榜时间内
-		isFrozen := c.EndTime-run.Timestamp <= c.FrozenTime
+		// 结合当前时间是否在封榜时间内
+		var isFrozen bool
+		if now := time.Now().Unix(); now >= c.EndTime-c.FrozenTime && now <= c.EndTime {
+			// 比赛总时长减去提交的相对时间戳（毫秒转换为秒），如果小于等于封榜时间，则在封榜范围内
+			isFrozen = (c.EndTime-c.StartTime)-run.Timestamp/1000 <= c.FrozenTime
+		}
 
 		// 根据状态处理
 		switch run.Status {
@@ -298,7 +304,9 @@ func (c *Contest) CalculateResults() ([]*Result, error) {
 				problemResult.PendingAttempts++
 			} else {
 				problemResult.Solved = true
-				problemResult.SolvedTime = run.Timestamp - c.StartTime
+				// run.Timestamp 是毫秒级的相对时间戳，需要转换为秒
+				problemResult.SolvedTime = run.Timestamp / 1000
+				// 计算罚时：解题时间加上之前错误尝试的罚时
 				problemResult.PenaltyTime = problemResult.SolvedTime + int64(problemResult.Attempts)*c.Penalty
 
 				// 更新总分和时间

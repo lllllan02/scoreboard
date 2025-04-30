@@ -211,35 +211,47 @@ function renderScoreboard(data) {
             
             if (problemResult) {
                 if (problemResult.solved) {
-                    // 题目已解决
+                    // 题目已解决，显示为 + 提交次数/通过时间
                     problemCell.classList.add('problem-solved');
                     if (problemResult.first_to_solve) {
                         problemCell.classList.add('problem-first-to-solve');
                     }
                     
-                    const attempts = problemResult.attempts > 0 ? 
-                        `<div class="small">(-${problemResult.attempts})</div>` : '';
+                    // 计算总提交次数 = 错误尝试 + 1次正确
+                    const totalAttempts = problemResult.attempts + 1;
+                    // 将通过时间格式化为分钟数
+                    const solvedTimeMinutes = Math.floor(problemResult.solved_time / 60);
                     
+                    // 新的格式: + 1/分钟数
                     problemCell.innerHTML = `
-                        <div>${formatDuration(problemResult.solved_time)}</div>
-                        ${attempts}
+                        <div class="result-status">+</div>
+                        <div class="result-details">1/${solvedTimeMinutes}</div>
                     `;
-                    
-                    // 注意：我们不再在这里应用自定义颜色
                 } else if (problemResult.attempts > 0) {
-                    // 尝试但未解决
+                    // 尝试但未解决，显示为 - 提交次数
                     problemCell.classList.add('problem-failed');
-                    problemCell.innerHTML = `<div>-${problemResult.attempts}</div>`;
                     
                     // 如果有待定提交
                     if (problemResult.is_frozen && problemResult.pending_attempts > 0) {
                         problemCell.classList.add('problem-pending');
-                        problemCell.innerHTML += `<div class="small">+${problemResult.pending_attempts}</div>`;
+                        // 使用问号显示有冻结提交的情况
+                        problemCell.innerHTML = `
+                            <div class="result-status">?</div>
+                            <div class="result-details">${problemResult.attempts}+${problemResult.pending_attempts}</div>
+                        `;
+                    } else {
+                        problemCell.innerHTML = `
+                            <div class="result-status">-</div>
+                            <div class="result-details">${problemResult.attempts}</div>
+                        `;
                     }
                 } else if (problemResult.is_frozen && problemResult.pending_attempts > 0) {
                     // 仅有待定提交
                     problemCell.classList.add('problem-pending');
-                    problemCell.innerHTML = `<div>+${problemResult.pending_attempts}</div>`;
+                    problemCell.innerHTML = `
+                        <div class="result-status">?</div>
+                        <div class="result-details">${problemResult.pending_attempts}</div>
+                    `;
                 }
             }
             
@@ -368,13 +380,13 @@ function startTimer() {
 function updateTimeDisplay() {
     const now = getCurrentTimestamp();
     
-    // 计算剩余时间和已用时间
+    // 计算剩余时间和已用时间（秒）
     const remainingTime = contestInfo.endTime - now;
     const elapsedTime = now - contestInfo.startTime;
     
-    // 更新显示
-    document.getElementById('remaining-time').textContent = formatDuration(Math.max(0, remainingTime));
-    document.getElementById('elapsed-time').textContent = formatDuration(Math.max(0, elapsedTime));
+    // 更新显示 - 这里仍使用时分秒格式
+    document.getElementById('remaining-time').textContent = formatTimerDuration(Math.max(0, remainingTime));
+    document.getElementById('elapsed-time').textContent = formatTimerDuration(Math.max(0, elapsedTime));
     
     // 更新比赛状态
     let status = '';
@@ -393,6 +405,19 @@ function updateTimeDisplay() {
         contestStatus = status;
         loadScoreboardData();
     }
+}
+
+// 格式化计时器时间为时:分:秒格式
+function formatTimerDuration(seconds) {
+    if (seconds < 0) {
+        return "0:00:00";
+    }
+    
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
 // 显示错误信息
