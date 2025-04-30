@@ -28,9 +28,8 @@ type Contest struct {
 	Banner         Banner                    `json:"banner"`
 	Options        ContestOptions            `json:"options"`
 
-	Teams   map[string]*Team   `json:"-"`
-	Runs    []*Run             `json:"-"`
-	Results map[string]*Result `json:"-"`
+	// 存储数据目录，用于按需加载
+	dataDir string `json:"-"`
 }
 
 // BalloonColor 表示气球颜色
@@ -101,7 +100,30 @@ type ProblemResult struct {
 	PendingAttempts int    `json:"pending_attempts,omitempty"`
 }
 
-// LoadAllContests 加载所有比赛数据
+// LoadContestConfig 只加载比赛的基本配置信息
+func LoadContestConfig(dataDir, contestID string) (*Contest, error) {
+	contestDir := filepath.Join(dataDir, filepath.FromSlash(contestID))
+
+	// 加载配置
+	configPath := filepath.Join(contestDir, "config.json")
+	configData, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read config.json: %w", err)
+	}
+
+	var contest Contest
+	if err := json.Unmarshal(configData, &contest); err != nil {
+		return nil, fmt.Errorf("failed to parse config.json: %w", err)
+	}
+
+	contest.ID = contestID
+	// 保存数据目录路径，用于后续按需加载
+	contest.dataDir = dataDir
+
+	return &contest, nil
+}
+
+// LoadAllContests 加载所有比赛的基本配置
 func LoadAllContests(dataDir string) (map[string]*Contest, error) {
 	contestsMap := make(map[string]*Contest)
 
@@ -121,8 +143,8 @@ func LoadAllContests(dataDir string) (map[string]*Contest, error) {
 
 			contestID := strings.Replace(relPath, string(filepath.Separator), "/", -1)
 
-			// 加载比赛数据
-			contest, err := LoadContest(dataDir, contestID)
+			// 只加载比赛基本配置
+			contest, err := LoadContestConfig(dataDir, contestID)
 			if err != nil {
 				return err
 			}
@@ -140,25 +162,13 @@ func LoadAllContests(dataDir string) (map[string]*Contest, error) {
 	return contestsMap, nil
 }
 
-// LoadContest 加载单个比赛数据
-func LoadContest(dataDir, contestID string) (*Contest, error) {
-	contestDir := filepath.Join(dataDir, filepath.FromSlash(contestID))
-
-	// 加载配置
-	configPath := filepath.Join(contestDir, "config.json")
-	configData, err := os.ReadFile(configPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read config.json: %w", err)
+// LoadTeams 按需加载队伍数据
+func (c *Contest) LoadTeams() (map[string]*Team, error) {
+	if c.dataDir == "" {
+		return nil, fmt.Errorf("dataDir not set, cannot load teams")
 	}
 
-	var contest Contest
-	if err := json.Unmarshal(configData, &contest); err != nil {
-		return nil, fmt.Errorf("failed to parse config.json: %w", err)
-	}
-
-	contest.ID = contestID
-	contest.Teams = make(map[string]*Team)
-	contest.Results = make(map[string]*Result)
+	contestDir := filepath.Join(c.dataDir, filepath.FromSlash(c.ID))
 
 	// 加载队伍数据
 	teamPath := filepath.Join(contestDir, "team.json")
@@ -172,7 +182,16 @@ func LoadContest(dataDir, contestID string) (*Contest, error) {
 		return nil, fmt.Errorf("failed to parse team.json: %w", err)
 	}
 
-	contest.Teams = teamsMap
+	return teamsMap, nil
+}
+
+// LoadRuns 按需加载提交记录
+func (c *Contest) LoadRuns() ([]*Run, error) {
+	if c.dataDir == "" {
+		return nil, fmt.Errorf("dataDir not set, cannot load runs")
+	}
+
+	contestDir := filepath.Join(c.dataDir, filepath.FromSlash(c.ID))
 
 	// 加载提交记录
 	runPath := filepath.Join(contestDir, "run.json")
@@ -186,20 +205,42 @@ func LoadContest(dataDir, contestID string) (*Contest, error) {
 		return nil, fmt.Errorf("failed to parse run.json: %w", err)
 	}
 
-	contest.Runs = runs
+	return runs, nil
+}
 
-	// 计算比赛结果
-	if err := contest.CalculateResults(); err != nil {
-		return nil, fmt.Errorf("failed to calculate results: %w", err)
+// LoadContest 加载单个比赛的基本数据(但不加载Teams和Runs)
+func LoadContest(dataDir, contestID string) (*Contest, error) {
+	// 使用LoadContestConfig加载基本配置
+	contest, err := LoadContestConfig(dataDir, contestID)
+	if err != nil {
+		return nil, err
 	}
 
-	return &contest, nil
+	// 设置数据目录
+	contest.dataDir = dataDir
+
+	return contest, nil
 }
 
 // CalculateResults 计算比赛结果
-func (c *Contest) CalculateResults() error {
+func (c *Contest) CalculateResults() ([]*Result, error) {
+	// 按需加载队伍数据
+	teams, err := c.LoadTeams()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load teams: %w", err)
+	}
+
+	// 按需加载提交记录
+	runs, err := c.LoadRuns()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load runs: %w", err)
+	}
+
+	// 创建结果映射
+	resultsMap := make(map[string]*Result)
+
 	// 初始化结果
-	for teamID, team := range c.Teams {
+	for teamID, team := range teams {
 		result := &Result{
 			TeamID:         teamID,
 			Team:           team,
@@ -213,18 +254,18 @@ func (c *Contest) CalculateResults() error {
 			}
 		}
 
-		c.Results[teamID] = result
+		resultsMap[teamID] = result
 	}
 
 	// 处理提交记录
-	for _, run := range c.Runs {
+	for _, run := range runs {
 		// 跳过jury提交
 		if run.TeamID == "jury" {
 			continue
 		}
 
 		// 获取队伍结果
-		result, ok := c.Results[run.TeamID]
+		result, ok := resultsMap[run.TeamID]
 		if !ok {
 			continue
 		}
@@ -276,7 +317,7 @@ func (c *Contest) CalculateResults() error {
 
 	// 标记第一个解出的队伍
 	firstSolved := make(map[string]int64)
-	for _, result := range c.Results {
+	for _, result := range resultsMap {
 		for problemID, pr := range result.ProblemResults {
 			if pr.Solved && (!pr.IsFrozen) {
 				if firstTime, ok := firstSolved[problemID]; !ok || pr.SolvedTime < firstTime {
@@ -287,7 +328,7 @@ func (c *Contest) CalculateResults() error {
 	}
 
 	// 设置first to solve标记
-	for _, result := range c.Results {
+	for _, result := range resultsMap {
 		for problemID, pr := range result.ProblemResults {
 			if pr.Solved && pr.SolvedTime == firstSolved[problemID] {
 				pr.FirstToSolve = true
@@ -297,7 +338,7 @@ func (c *Contest) CalculateResults() error {
 
 	// 按分数和罚时进行排序
 	var resultsList []*Result
-	for _, result := range c.Results {
+	for _, result := range resultsMap {
 		resultsList = append(resultsList, result)
 	}
 
@@ -324,15 +365,15 @@ func (c *Contest) CalculateResults() error {
 		}
 	}
 
-	return nil
+	return resultsList, nil
 }
 
 // GetVisibleResults 获取当前可见的结果（考虑封榜）
-func (c *Contest) GetVisibleResults() []*Result {
-	var results []*Result
-
-	for _, result := range c.Results {
-		results = append(results, result)
+func (c *Contest) GetVisibleResults() ([]*Result, error) {
+	// 计算结果
+	results, err := c.CalculateResults()
+	if err != nil {
+		return nil, err
 	}
 
 	// 按排名排序
@@ -340,14 +381,20 @@ func (c *Contest) GetVisibleResults() []*Result {
 		return results[i].Rank < results[j].Rank
 	})
 
-	return results
+	return results, nil
 }
 
 // GetFilteredResults 获取过滤后的结果
-func (c *Contest) GetFilteredResults(group string) []*Result {
+func (c *Contest) GetFilteredResults(group string) ([]*Result, error) {
+	// 计算结果
+	allResults, err := c.CalculateResults()
+	if err != nil {
+		return nil, err
+	}
+
 	var results []*Result
 
-	for _, result := range c.Results {
+	for _, result := range allResults {
 		// 如果指定了组别，则过滤
 		if group != "" {
 			found := false
@@ -371,5 +418,5 @@ func (c *Contest) GetFilteredResults(group string) []*Result {
 		return results[i].Rank < results[j].Rank
 	})
 
-	return results
+	return results, nil
 }

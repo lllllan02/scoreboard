@@ -82,9 +82,13 @@ func (s *ScoreboardService) GetScoreboard(contestID, group string) ([]*model.Res
 
 	var results []*model.Result
 	if group == "" {
-		results = contest.GetVisibleResults()
+		results, err = contest.GetVisibleResults()
 	} else {
-		results = contest.GetFilteredResults(group)
+		results, err = contest.GetFilteredResults(group)
+	}
+
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to get results: %w", err)
 	}
 
 	return results, contest, nil
