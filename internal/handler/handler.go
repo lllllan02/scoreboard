@@ -145,16 +145,9 @@ func ScoreboardHandler(svc *service.ScoreboardService) http.HandlerFunc {
 			return
 		}
 
+		// 直接返回完整的contest对象和结果，无需额外封装
 		response := map[string]interface{}{
-			"contest": map[string]interface{}{
-				"id":            contestID,
-				"name":          contest.Name,
-				"start_time":    contest.StartTime,
-				"end_time":      contest.EndTime,
-				"frozen_time":   contest.FrozenTime,
-				"problem_ids":   contest.ProblemIDs,
-				"problem_count": contest.ProblemCount,
-			},
+			"contest": contest,
 			"results": results,
 		}
 

@@ -35,6 +35,56 @@ document.addEventListener('DOMContentLoaded', function() {
     startTimer();
 });
 
+// 根据背景色计算合适的文字颜色（黑色或白色）
+function getContrastColor(backgroundColor) {
+    // 如果未提供背景色，返回黑色
+    if (!backgroundColor) return '#000000';
+    
+    // 将背景色格式标准化为RGB
+    let color = backgroundColor.toLowerCase();
+    let rgb = [];
+    
+    // 处理十六进制颜色
+    if (color.startsWith('#')) {
+        color = color.substring(1);
+        
+        // 处理简写形式 (#RGB)
+        if (color.length === 3) {
+            color = color[0] + color[0] + color[1] + color[1] + color[2] + color[2];
+        }
+        
+        rgb = [
+            parseInt(color.substring(0, 2), 16),
+            parseInt(color.substring(2, 4), 16),
+            parseInt(color.substring(4, 6), 16)
+        ];
+    }
+    // 处理rgb格式
+    else if (color.startsWith('rgb')) {
+        const matches = color.match(/(\d+),\s*(\d+),\s*(\d+)/);
+        if (matches) {
+            rgb = [
+                parseInt(matches[1]),
+                parseInt(matches[2]),
+                parseInt(matches[3])
+            ];
+        } else {
+            return '#000000';  // 默认黑色
+        }
+    }
+    // 无法解析的颜色，返回黑色
+    else {
+        return '#000000';
+    }
+    
+    // 使用更精确的灰度级别计算公式
+    // grayLevel = R * 0.299 + G * 0.587 + B * 0.114
+    const grayLevel = rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114;
+
+    // 如果灰度级别低于192，文字使用白色，否则使用黑色
+    return grayLevel < 192 ? '#FFFFFF' : '#000000';
+}
+
 // 加载记分板数据
 function loadScoreboardData() {
     const url = `/api/scoreboard/${contestInfo.id}${currentGroup ? `?group=${currentGroup}` : ''}`;
@@ -71,7 +121,9 @@ function renderScoreboard(data) {
     tableBody.innerHTML = '';
     
     const results = data.results;
-    const problemIds = data.contest.problem_ids;
+    const problemIds = data.contest.problem_id;
+    // 获取气球颜色配置
+    const balloonColors = data.contest.balloon_color || [];
     
     if (results.length === 0) {
         tableBody.innerHTML = `
@@ -83,6 +135,9 @@ function renderScoreboard(data) {
         `;
         return;
     }
+    
+    // 更新表头题目的颜色
+    updateProblemColumnStyles(problemIds, balloonColors);
     
     results.forEach(result => {
         const row = document.createElement('tr');
@@ -96,6 +151,8 @@ function renderScoreboard(data) {
         
         // 队伍信息
         const teamCell = document.createElement('td');
+        teamCell.className = 'text-center';
+        
         const teamName = document.createElement('div');
         teamName.className = 'fw-bold';
         teamName.textContent = result.team.name;
@@ -143,9 +200,9 @@ function renderScoreboard(data) {
         row.appendChild(timeCell);
         
         // 题目状态
-        problemIds.forEach(problemId => {
+        problemIds.forEach((problemId, index) => {
             const problemCell = document.createElement('td');
-            problemCell.className = 'problem-cell';
+            problemCell.className = 'problem-cell text-center';
             
             const problemResult = result.problem_results[problemId];
             
@@ -164,6 +221,8 @@ function renderScoreboard(data) {
                         <div>${formatDuration(problemResult.solved_time)}</div>
                         ${attempts}
                     `;
+                    
+                    // 注意：我们不再在这里应用自定义颜色
                 } else if (problemResult.attempts > 0) {
                     // 尝试但未解决
                     problemCell.classList.add('problem-failed');
@@ -185,6 +244,36 @@ function renderScoreboard(data) {
         });
         
         tableBody.appendChild(row);
+    });
+}
+
+// 更新表头题目的颜色样式
+function updateProblemColumnStyles(problemIds, balloonColors) {
+    const headerRow = document.querySelector('#scoreboard-table thead tr');
+    if (!headerRow) return;
+    
+    // 从第5个单元格开始是题目列（前4个是排名、队伍、解题数、罚时）
+    const problemColumns = headerRow.querySelectorAll('th.problem-column');
+    
+    problemColumns.forEach((column, index) => {
+        const balloonColor = balloonColors[index] || {};
+        
+        if (balloonColor.background_color) {
+            // 使用灰度级别公式判断文字颜色
+            const textColor = getContrastColor(balloonColor.background_color);
+            
+            // 构建样式字符串
+            let styleString = `background-color: ${balloonColor.background_color} !important;`;
+            
+            // 如果后端明确指定了文字颜色，优先使用后端指定的，否则使用自动计算的对比色
+            styleString += ` color: ${textColor} !important;`;
+            
+            // 一次性设置样式，避免多次覆盖
+            column.setAttribute('style', styleString);
+            
+            // 添加调试信息
+            console.log(`题目 ${problemIds[index]}: 背景色=${balloonColor.background_color}, 文字颜色=${textColor}, 最终颜色=${column.style.color}`);
+        }
     });
 }
 
