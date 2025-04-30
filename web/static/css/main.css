@@ -76,6 +76,14 @@ body {
     border-left: 2px solid #fff !important;
 }
 
+/* 题目统计信息样式 */
+.problem-stats {
+    font-size: 0.75rem;
+    opacity: 0.9;
+    margin-top: 0.15rem;
+    font-weight: normal;
+}
+
 .scoreboard-row:hover {
     background-color: rgba(0, 123, 255, 0.05);
 }

@@ -136,8 +136,11 @@ function renderScoreboard(data) {
         return;
     }
     
-    // 更新表头题目的颜色
-    updateProblemColumnStyles(problemIds, balloonColors);
+    // 统计每题的通过数量
+    const problemStatsMap = calculateProblemStats(results, problemIds);
+    
+    // 更新表头题目的颜色和通过数量
+    updateProblemColumnStyles(problemIds, balloonColors, problemStatsMap);
     
     results.forEach(result => {
         const row = document.createElement('tr');
@@ -247,8 +250,38 @@ function renderScoreboard(data) {
     });
 }
 
+// 统计每道题目的通过数量
+function calculateProblemStats(results, problemIds) {
+    const statsMap = {};
+    
+    // 初始化每题的通过数量为0
+    problemIds.forEach(problemId => {
+        statsMap[problemId] = {
+            solvedCount: 0,
+            totalAttempts: 0,
+            teams: results.length
+        };
+    });
+    
+    // 统计各题目的通过情况
+    results.forEach(result => {
+        problemIds.forEach(problemId => {
+            const problemResult = result.problem_results[problemId];
+            if (problemResult) {
+                if (problemResult.solved) {
+                    statsMap[problemId].solvedCount++;
+                }
+                statsMap[problemId].totalAttempts += problemResult.attempts + 
+                    (problemResult.is_frozen ? problemResult.pending_attempts : 0);
+            }
+        });
+    });
+    
+    return statsMap;
+}
+
 // 更新表头题目的颜色样式
-function updateProblemColumnStyles(problemIds, balloonColors) {
+function updateProblemColumnStyles(problemIds, balloonColors, problemStatsMap) {
     const headerRow = document.querySelector('#scoreboard-table thead tr');
     if (!headerRow) return;
     
@@ -256,7 +289,20 @@ function updateProblemColumnStyles(problemIds, balloonColors) {
     const problemColumns = headerRow.querySelectorAll('th.problem-column');
     
     problemColumns.forEach((column, index) => {
+        const problemId = problemIds[index];
         const balloonColor = balloonColors[index] || {};
+        const problemStats = problemStatsMap ? problemStatsMap[problemId] : null;
+        
+        // 更新表头内容，只添加通过数量
+        if (problemStats) {
+            const solvedCount = problemStats.solvedCount;
+            
+            // 创建新的表头内容，只显示题号和通过数量
+            column.innerHTML = `
+                <div>${problemId}</div>
+                <div class="small problem-stats">${solvedCount}</div>
+            `;
+        }
         
         if (balloonColor.background_color) {
             // 使用灰度级别公式判断文字颜色
