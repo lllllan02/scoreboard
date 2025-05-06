@@ -17,6 +17,25 @@ let timerInterval = null;
 
 // 初始化页面
 document.addEventListener('DOMContentLoaded', function() {
+    // 添加五角星样式
+    const style = document.createElement('style');
+    style.textContent = `
+        .team-badge-star {
+            display: inline-block;
+            margin-left: 5px;
+            font-size: 0.9em;
+            color: gold;
+            text-shadow: 0 0 1px #000;
+            animation: star-pulse 1.5s infinite alternate;
+        }
+        
+        @keyframes star-pulse {
+            from { opacity: 0.7; }
+            to { opacity: 1; transform: scale(1.2); }
+        }
+    `;
+    document.head.appendChild(style);
+    
     // 启动计时器（会立即调用updateTimeDisplay更新比赛状态）
     startTimer();
     
@@ -212,6 +231,15 @@ function renderScoreboard(data) {
             badge.className = 'team-badge team-badge-vocational';
             badge.textContent = '高职';
             teamName.appendChild(badge);
+        }
+        
+        // 检查是否为打星队伍（unofficial组）
+        if (result.team.group && result.team.group.includes('unofficial')) {
+            const starBadge = document.createElement('span');
+            starBadge.className = 'team-badge team-badge-star';
+            starBadge.innerHTML = '★'; // 使用五角星符号
+            starBadge.title = '打星队伍';
+            teamName.appendChild(starBadge);
         }
         
         teamCell.appendChild(teamName);
