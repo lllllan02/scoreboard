@@ -254,7 +254,8 @@ function renderScoreboard(data) {
         // 罚时
         const timeCell = document.createElement('td');
         timeCell.className = 'text-center';
-        timeCell.textContent = formatDuration(result.total_time);
+        // 后端已经将罚时转换为分钟，直接显示数字
+        timeCell.textContent = result.total_time;
         row.appendChild(timeCell);
         
         // 题目状态
@@ -274,8 +275,8 @@ function renderScoreboard(data) {
                     
                     // 计算总提交次数 = 错误尝试 + 1次正确
                     const totalAttempts = problemResult.attempts + 1;
-                    // 将通过时间格式化为分钟数
-                    const solvedTimeMinutes = Math.floor(problemResult.solved_time / 60);
+                    // 获取通过时间（后端已经以分钟为单位返回）
+                    const solvedTimeMinutes = problemResult.solved_time;
                     
                     // 新的格式: + 1/分钟数
                     problemCell.innerHTML = `

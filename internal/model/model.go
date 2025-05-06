@@ -431,12 +431,12 @@ func (c *Contest) CalculateResults() ([]*Result, error) {
 				problemResult.PendingAttempts++
 			} else {
 				problemResult.Solved = true
-				// run.Timestamp 是毫秒级的相对时间戳，需要转换为秒
-				problemResult.SolvedTime = run.Timestamp / 1000
-				// 计算罚时：解题时间加上之前错误尝试的罚时
-				problemResult.PenaltyTime = problemResult.SolvedTime + int64(problemResult.Attempts)*c.Penalty
+				// run.Timestamp 是毫秒级的相对时间戳，需要转换为秒，再转换为分钟
+				problemResult.SolvedTime = (run.Timestamp / 1000) / 60
+				// 计算罚时：解题时间(分钟)加上之前错误尝试的罚时(分钟)
+				problemResult.PenaltyTime = problemResult.SolvedTime + int64(problemResult.Attempts)*(c.Penalty/60)
 
-				// 更新总分和时间
+				// 更新总分和时间（以分钟为单位）
 				result.Score++
 				result.TotalTime += problemResult.PenaltyTime
 			}

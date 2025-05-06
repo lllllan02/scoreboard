@@ -3,14 +3,13 @@
  */
 
 // 格式化时间为分钟数
-function formatDuration(milliseconds) {
-    if (milliseconds < 0) {
+function formatDuration(minutes) {
+    if (minutes < 0) {
         return "0";
     }
     
-    // 将毫秒转换为分钟，四舍五入到整数
-    const totalMinutes = Math.round((milliseconds / 1000) / 60);
-    return totalMinutes.toString();
+    // 后端已经计算为分钟，直接返回
+    return minutes.toString();
 }
 
 // 格式化日期
