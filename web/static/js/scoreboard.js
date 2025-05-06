@@ -1,6 +1,7 @@
 /**
  * 记分板功能
  */
+console.log('记分板脚本加载成功 - 版本2 - 队名和学校分离');
 
 // 当前选择的组别
 let currentGroup = '';
@@ -117,6 +118,8 @@ function loadScoreboardData() {
 
 // 渲染记分板
 function renderScoreboard(data) {
+    console.log('开始渲染记分板，分离队名和学校');
+    
     const tableBody = document.getElementById('scoreboard-body');
     tableBody.innerHTML = '';
     
@@ -128,13 +131,16 @@ function renderScoreboard(data) {
     if (results.length === 0) {
         tableBody.innerHTML = `
             <tr>
-                <td colspan="${problemIds.length + 4}" class="text-center py-5">
+                <td colspan="${problemIds.length + 5}" class="text-center py-5">
                     暂无数据
                 </td>
             </tr>
         `;
+        console.log('记分板无数据');
         return;
     }
+    
+    console.log(`准备渲染 ${results.length} 支队伍，学校和队名分离版本`);
     
     // 统计每题的通过数量
     const problemStatsMap = calculateProblemStats(results, problemIds);
@@ -152,17 +158,19 @@ function renderScoreboard(data) {
         rankCell.textContent = result.rank;
         row.appendChild(rankCell);
         
-        // 队伍信息
+        // 学校信息
+        const schoolCell = document.createElement('td');
+        schoolCell.className = 'text-center';
+        schoolCell.textContent = result.team.organization;
+        console.log(`创建学校单元格：${result.team.organization}`);
+        row.appendChild(schoolCell);
+        
+        // 队伍名称
         const teamCell = document.createElement('td');
         teamCell.className = 'text-center';
         
         const teamName = document.createElement('div');
-        teamName.className = 'fw-bold';
         teamName.textContent = result.team.name;
-        
-        const teamOrg = document.createElement('div');
-        teamOrg.className = 'small text-muted';
-        teamOrg.textContent = result.team.organization;
         
         // 添加队伍标签
         if (result.team.undergraduate) {
@@ -187,7 +195,6 @@ function renderScoreboard(data) {
         }
         
         teamCell.appendChild(teamName);
-        teamCell.appendChild(teamOrg);
         row.appendChild(teamCell);
         
         // 解题数
@@ -297,7 +304,7 @@ function updateProblemColumnStyles(problemIds, balloonColors, problemStatsMap) {
     const headerRow = document.querySelector('#scoreboard-table thead tr');
     if (!headerRow) return;
     
-    // 从第5个单元格开始是题目列（前4个是排名、队伍、解题数、罚时）
+    // 从第6个单元格开始是题目列（前5个是排名、学校、队伍、解题数、罚时）
     const problemColumns = headerRow.querySelectorAll('th.problem-column');
     
     problemColumns.forEach((column, index) => {
