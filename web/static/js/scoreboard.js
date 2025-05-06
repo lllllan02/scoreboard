@@ -17,10 +17,10 @@ let timerInterval = null;
 
 // 初始化页面
 document.addEventListener('DOMContentLoaded', function() {
-    // 获取比赛状态
-    contestStatus = contestInfo.currentStatus;
+    // 启动计时器（会立即调用updateTimeDisplay更新比赛状态）
+    startTimer();
     
-    // 加载记分板数据
+    // 加载记分板数据（由于已经通过updateTimeDisplay设置了contestStatus，不会导致重复加载）
     loadScoreboardData();
     
     // 设置组别筛选事件
@@ -31,9 +31,6 @@ document.addEventListener('DOMContentLoaded', function() {
         loadScoreboardData();
         showNotification('记分板已刷新', 'success');
     });
-    
-    // 启动计时器
-    startTimer();
 });
 
 // 根据背景色计算合适的文字颜色（黑色或白色）
@@ -430,8 +427,12 @@ function updateTimeDisplay() {
     
     document.getElementById('contest-status').textContent = status;
     
-    // 如果比赛状态发生变化，重新加载数据
-    if (status !== contestStatus) {
+    // 记录首次调用时的状态，或检查状态是否变化并重新加载数据
+    if (contestStatus === '') {
+        // 首次调用时仅设置状态，不加载数据
+        contestStatus = status;
+    } else if (status !== contestStatus) {
+        // 状态变化时更新状态并重新加载数据
         contestStatus = status;
         loadScoreboardData();
     }
