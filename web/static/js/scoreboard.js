@@ -128,6 +128,9 @@ function renderScoreboard(data) {
     // 获取气球颜色配置
     const balloonColors = data.contest.balloon_color || [];
     
+    // 用于跟踪已经显示了排名的学校
+    const displayedSchoolRanks = new Set();
+    
     if (results.length === 0) {
         tableBody.innerHTML = `
             <tr>
@@ -160,8 +163,28 @@ function renderScoreboard(data) {
         
         // 学校信息
         const schoolCell = document.createElement('td');
-        schoolCell.className = 'text-center';
+        schoolCell.className = 'text-center position-relative';
         schoolCell.textContent = result.team.organization;
+        
+        // 只在学校第一次出现时添加学校排名
+        const schoolName = result.team.organization;
+        if (result.school_rank && !displayedSchoolRanks.has(schoolName)) {
+            // 创建包含排名的容器，使用绝对定位
+            const rankSpan = document.createElement('span');
+            rankSpan.className = 'position-absolute';
+            rankSpan.style.left = '8px';  // 靠左边距
+            rankSpan.style.top = '50%';
+            rankSpan.style.transform = 'translateY(-50%)';  // 垂直居中
+            rankSpan.style.fontSize = '0.85em';  // 字体更小
+            rankSpan.style.color = '#666';  // 灰色，不那么显眼
+            rankSpan.textContent = result.school_rank;
+            
+            schoolCell.appendChild(rankSpan);
+            
+            // 记录这个学校已经显示过排名
+            displayedSchoolRanks.add(schoolName);
+        }
+        
         console.log(`创建学校单元格：${result.team.organization}`);
         row.appendChild(schoolCell);
         

@@ -87,6 +87,7 @@ type Result struct {
 	Score          int                       `json:"score"`
 	TotalTime      int64                     `json:"total_time"`
 	ProblemResults map[string]*ProblemResult `json:"problem_results"`
+	SchoolRank     int                       `json:"school_rank"`
 }
 
 // ProblemResult 表示一个题目的结果
@@ -496,6 +497,35 @@ func (c *Contest) CalculateResults() ([]*Result, error) {
 			if prev.Score == result.Score && prev.TotalTime == result.TotalTime {
 				result.Rank = prev.Rank
 			}
+		}
+	}
+
+	// 计算学校排名
+	schoolRankMap := make(map[string]int) // 学校名称 -> 排名
+	currentRank := 0                      // 当前学校排名
+
+	// 按照队伍排名顺序遍历，为每个不同的学校分配排名
+	for _, result := range resultsList {
+		school := result.Team.Organization
+		if school == "" {
+			continue // 跳过没有学校信息的队伍
+		}
+
+		// 如果这个学校已经有排名了，就跳过
+		if _, exists := schoolRankMap[school]; exists {
+			continue
+		}
+
+		// 为新学校分配排名
+		currentRank++
+		schoolRankMap[school] = currentRank
+	}
+
+	// 将学校排名保存到队伍结果中
+	for _, result := range resultsList {
+		school := result.Team.Organization
+		if rank, exists := schoolRankMap[school]; exists {
+			result.SchoolRank = rank
 		}
 	}
 
