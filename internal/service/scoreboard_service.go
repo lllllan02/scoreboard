@@ -10,7 +10,7 @@ import (
 
 // ScoreboardService 提供记分板相关的服务
 type ScoreboardService struct {
-	ContestsMap map[string]*model.Contest
+	// 不再需要缓存
 }
 
 // ContestInfo 比赛基本信息
@@ -23,17 +23,20 @@ type ContestInfo struct {
 }
 
 // NewScoreboardService 创建一个新的记分板服务
-func NewScoreboardService(contestsMap map[string]*model.Contest) *ScoreboardService {
-	return &ScoreboardService{
-		ContestsMap: contestsMap,
-	}
+func NewScoreboardService() *ScoreboardService {
+	return &ScoreboardService{}
 }
 
 // GetAllContests 获取所有比赛信息
-func (s *ScoreboardService) GetAllContests() []ContestInfo {
-	var contests []ContestInfo
+func (s *ScoreboardService) GetAllContests() ([]ContestInfo, error) {
+	// 直接从目录文件读取
+	contests, err := model.LoadAllContests()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load contests: %w", err)
+	}
 
-	for id, contest := range s.ContestsMap {
+	var contestInfos []ContestInfo
+	for id, contest := range contests {
 		info := ContestInfo{
 			ID:        id,
 			Name:      contest.Name,
@@ -42,32 +45,32 @@ func (s *ScoreboardService) GetAllContests() []ContestInfo {
 		}
 
 		// 设置比赛类型（根据比赛ID的前缀确定）
-		if id[:3] == "icpc" {
+		if len(id) >= 4 && id[:4] == "icpc" {
 			info.Type = "ICPC"
-		} else if id[:4] == "ccpc" {
+		} else if len(id) >= 4 && id[:4] == "ccpc" {
 			info.Type = "CCPC"
-		} else if id[:10] == "provincial" {
+		} else if len(id) >= 10 && id[:10] == "provincial" {
 			info.Type = "Provincial"
 		} else {
 			info.Type = "Other"
 		}
 
-		contests = append(contests, info)
+		contestInfos = append(contestInfos, info)
 	}
 
 	// 按开始时间排序，最近的比赛排在前面
-	sort.Slice(contests, func(i, j int) bool {
-		return contests[i].StartTime.After(contests[j].StartTime)
+	sort.Slice(contestInfos, func(i, j int) bool {
+		return contestInfos[i].StartTime.After(contestInfos[j].StartTime)
 	})
 
-	return contests
+	return contestInfos, nil
 }
 
 // GetContest 获取指定比赛
 func (s *ScoreboardService) GetContest(contestID string) (*model.Contest, error) {
-	contest, exists := s.ContestsMap[contestID]
-	if !exists {
-		return nil, fmt.Errorf("contest not found: %s", contestID)
+	contest, err := model.LoadContestConfig(contestID)
+	if err != nil {
+		return nil, fmt.Errorf("contest not found: %s", err)
 	}
 
 	return contest, nil

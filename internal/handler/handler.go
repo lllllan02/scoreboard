@@ -31,7 +31,13 @@ func IndexHandler(svc *service.ScoreboardService) http.HandlerFunc {
 			return
 		}
 
-		contests := svc.GetAllContests()
+		contests, err := svc.GetAllContests()
+		if err != nil {
+			log.Printf("Error getting contests: %v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
 		data := map[string]interface{}{
 			"Title":    "XCPC记分板",
 			"Contests": contests,

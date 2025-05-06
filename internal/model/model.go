@@ -101,8 +101,25 @@ type ProblemResult struct {
 	PendingAttempts int    `json:"pending_attempts,omitempty"`
 }
 
+// ContestDirectory 比赛目录结构
+type ContestDirectory struct {
+	Contests map[string]ContestInfo `json:"contests"`
+}
+
+// ContestInfo 目录中存储的比赛基本信息（仅首页需要的字段）
+type ContestInfo struct {
+	ID           string `json:"id"`
+	Name         string `json:"contest_name"`
+	StartTime    int64  `json:"start_time"`
+	EndTime      int64  `json:"end_time"`
+	Organization string `json:"organization"`
+	Type         string `json:"type,omitempty"`
+}
+
+const dataDir = "data"
+
 // LoadContestConfig 只加载比赛的基本配置信息
-func LoadContestConfig(dataDir, contestID string) (*Contest, error) {
+func LoadContestConfig(contestID string) (*Contest, error) {
 	contestDir := filepath.Join(dataDir, filepath.FromSlash(contestID))
 
 	// 加载配置
@@ -125,11 +142,43 @@ func LoadContestConfig(dataDir, contestID string) (*Contest, error) {
 }
 
 // LoadAllContests 加载所有比赛的基本配置
-func LoadAllContests(dataDir string) (map[string]*Contest, error) {
+func LoadAllContests() (map[string]*Contest, error) {
 	contestsMap := make(map[string]*Contest)
 
-	// 递归扫描数据目录
-	err := filepath.Walk(dataDir, func(path string, info os.FileInfo, err error) error {
+	// 尝试从目录文件加载比赛列表
+	dirPath := filepath.Join(dataDir, "directory.json")
+	dirData, err := os.ReadFile(dirPath)
+
+	// 如果目录文件存在，直接从目录加载基本信息，然后按需加载详细配置
+	if err == nil {
+		var directory ContestDirectory
+		if err := json.Unmarshal(dirData, &directory); err != nil {
+			return nil, fmt.Errorf("failed to parse directory.json: %w", err)
+		}
+
+		// 从目录加载基本信息，然后按需加载详细配置
+		for contestID, contestInfo := range directory.Contests {
+			contest, err := LoadContestConfig(contestID)
+			if err != nil {
+				// 如果无法加载详细配置，则使用目录中的基本信息创建一个简化版Contest
+				contest = &Contest{
+					ID:           contestID,
+					Name:         contestInfo.Name,
+					StartTime:    contestInfo.StartTime,
+					EndTime:      contestInfo.EndTime,
+					Organization: contestInfo.Organization,
+					dataDir:      dataDir,
+				}
+			}
+			contestsMap[contestID] = contest
+		}
+
+		return contestsMap, nil
+	}
+
+	// 如果目录文件不存在，回退到旧方法:递归扫描数据目录
+	contestInfoMap := make(map[string]ContestInfo)
+	err = filepath.Walk(dataDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -144,13 +193,29 @@ func LoadAllContests(dataDir string) (map[string]*Contest, error) {
 
 			contestID := strings.Replace(relPath, string(filepath.Separator), "/", -1)
 
-			// 只加载比赛基本配置
-			contest, err := LoadContestConfig(dataDir, contestID)
+			// 加载比赛基本配置
+			contest, err := LoadContestConfig(contestID)
 			if err != nil {
 				return err
 			}
 
+			// 保存到结果map
 			contestsMap[contestID] = contest
+
+			// 为目录文件只准备首页所需的数据
+			contestType := "Other" // 默认类型
+			if strings.Contains(strings.ToLower(contest.Name), "provincial") {
+				contestType = "Provincial"
+			}
+
+			contestInfoMap[contestID] = ContestInfo{
+				ID:           contest.ID,
+				Name:         contest.Name,
+				StartTime:    contest.StartTime,
+				EndTime:      contest.EndTime,
+				Organization: contest.Organization,
+				Type:         contestType,
+			}
 		}
 
 		return nil
@@ -160,7 +225,82 @@ func LoadAllContests(dataDir string) (map[string]*Contest, error) {
 		return nil, err
 	}
 
+	// 创建目录文件以便将来使用
+	if len(contestInfoMap) > 0 {
+		if err := UpdateContestDirectory(contestInfoMap); err != nil {
+			// 只记录错误，不影响返回结果
+			fmt.Printf("Warning: failed to create contest directory: %v\n", err)
+		}
+	}
+
 	return contestsMap, nil
+}
+
+// UpdateContestDirectory 更新比赛目录文件
+func UpdateContestDirectory(contestInfoMap map[string]ContestInfo) error {
+	directory := ContestDirectory{
+		Contests: contestInfoMap,
+	}
+
+	dirData, err := json.MarshalIndent(directory, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal directory data: %w", err)
+	}
+
+	dirPath := filepath.Join(dataDir, "directory.json")
+	if err := os.WriteFile(dirPath, dirData, 0644); err != nil {
+		return fmt.Errorf("failed to write directory.json: %w", err)
+	}
+
+	return nil
+}
+
+// AddContestToDirectory 向目录添加新比赛
+func AddContestToDirectory(contest *Contest) error {
+	// 尝试加载现有的目录
+	dirPath := "data/directory.json"
+	var directory ContestDirectory
+
+	dirData, err := os.ReadFile(dirPath)
+	if err == nil {
+		// 目录文件存在，解析现有数据
+		if err := json.Unmarshal(dirData, &directory); err != nil {
+			return fmt.Errorf("failed to parse directory.json: %w", err)
+		}
+	} else {
+		// 目录不存在，创建新的
+		directory = ContestDirectory{
+			Contests: make(map[string]ContestInfo),
+		}
+	}
+
+	// 确定比赛类型
+	contestType := "Other" // 默认类型
+	if strings.Contains(strings.ToLower(contest.Name), "provincial") {
+		contestType = "Provincial"
+	}
+
+	// 添加或更新比赛信息
+	directory.Contests[contest.ID] = ContestInfo{
+		ID:           contest.ID,
+		Name:         contest.Name,
+		StartTime:    contest.StartTime,
+		EndTime:      contest.EndTime,
+		Organization: contest.Organization,
+		Type:         contestType,
+	}
+
+	// 写回目录文件
+	newDirData, err := json.MarshalIndent(directory, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal directory data: %w", err)
+	}
+
+	if err := os.WriteFile(dirPath, newDirData, 0644); err != nil {
+		return fmt.Errorf("failed to write directory.json: %w", err)
+	}
+
+	return nil
 }
 
 // LoadTeams 按需加载队伍数据
@@ -207,20 +347,6 @@ func (c *Contest) LoadRuns() ([]*Run, error) {
 	}
 
 	return runs, nil
-}
-
-// LoadContest 加载单个比赛的基本数据(但不加载Teams和Runs)
-func LoadContest(dataDir, contestID string) (*Contest, error) {
-	// 使用LoadContestConfig加载基本配置
-	contest, err := LoadContestConfig(dataDir, contestID)
-	if err != nil {
-		return nil, err
-	}
-
-	// 设置数据目录
-	contest.dataDir = dataDir
-
-	return contest, nil
 }
 
 // CalculateResults 计算比赛结果

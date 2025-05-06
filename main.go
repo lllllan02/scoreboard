@@ -6,24 +6,13 @@ import (
 	"os"
 
 	"github.com/lllllan02/scoreboard/internal/handler"
-	"github.com/lllllan02/scoreboard/internal/model"
 	"github.com/lllllan02/scoreboard/internal/service"
 )
 
 func main() {
-	// 初始化数据
-	dataDir := "data"
-
-	// 只加载比赛的基本配置信息，不加载完整数据
-	contestsMap, err := model.LoadAllContests(dataDir)
-	if err != nil {
-		log.Fatalf("Failed to load contests: %v", err)
-	}
-
-	log.Printf("Successfully loaded basic configuration for %d contests", len(contestsMap))
-
-	// 初始化服务层，传递数据目录参数
-	scoreSvc := service.NewScoreboardService(contestsMap)
+	// 初始化服务层
+	scoreSvc := service.NewScoreboardService()
+	log.Printf("Scoreboard service initialized, will load contest data on-demand")
 
 	// 设置静态文件服务
 	staticDir := http.FileServer(http.Dir("web/static"))
