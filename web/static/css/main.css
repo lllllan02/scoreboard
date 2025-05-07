@@ -25,18 +25,37 @@ body {
     gap: 1.5rem;
 }
 
-.timer-item {
+/* 新的计时器卡片样式 */
+.timer-card {
+    background-color: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    padding: 12px 20px;
+    width: 100%;
+    max-width: 380px;
+}
+
+.timer-row {
+    display: flex;
+    justify-content: space-between;
+}
+
+.timer-col {
     text-align: center;
+    flex: 1;
 }
 
 .timer-label {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     color: #6c757d;
+    font-weight: 500;
+    margin-bottom: 5px;
 }
 
 .timer-value {
-    font-size: 1.2rem;
+    font-size: 1.3rem;
     font-weight: bold;
+    color: #333;
 }
 
 /* 记分板样式 */
@@ -45,7 +64,8 @@ body {
     border-spacing: 0;
     box-shadow: 0 2px 10px rgba(0,0,0,0.05);
     text-align: center;
-    line-height: 1.2;
+    line-height: 1; /* 减小行高 */
+    font-size: 0.85rem; /* 整体减小字体 */
 }
 
 #scoreboard-table thead th {
@@ -54,9 +74,9 @@ body {
     border-bottom: 2px solid #dee2e6;
     text-align: center;
     vertical-align: middle;
-    padding: 0.35rem 0.25rem !important;
-    font-size: 0.9rem;
-    height: 2.5rem;
+    padding: 0.2rem 0.2rem !important; /* 减小内边距 */
+    font-size: 0.8rem; /* 减小标题字体 */
+    height: 2rem; /* 减小标题高度 */
 }
 
 #scoreboard-table td, 
@@ -65,14 +85,148 @@ body {
     border-top: none;
     border-bottom: 1px solid #f5f5f5;
     vertical-align: middle;
+    padding: 0.3rem 0.2rem; /* 减小内边距 */
 }
 
+/* 行首单元格基础样式 */
+.scoreboard-row td:first-child {
+    border-left: none;
+}
+
+/* 排名单元格样式，确保文本居中且不被挤压 */
+.scoreboard-row td:first-child {
+    font-weight: 600;
+    padding-left: 5px;
+    padding-right: 5px;
+    min-width: 40px; /* 确保最小宽度 */
+    text-align: center;
+    padding-top: 0.2rem; /* 减小顶部内边距 */
+    padding-bottom: 0.2rem; /* 减小底部内边距 */
+}
+
+/* 学校单元格样式 */
+.scoreboard-row td:nth-child(2) {
+    position: relative;
+    padding-left: 22px; /* 为学校排名留出空间 */
+    text-align: left; /* 左对齐文本 */
+    max-width: 140px; /* 减小最大宽度 */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* 文本超出显示省略号 */
+    padding-top: 0.2rem; /* 减小顶部内边距 */
+    padding-bottom: 0.2rem; /* 减小底部内边距 */
+    font-size: 0.85rem; /* 减小字体大小 */
+}
+
+/* 学校排名样式 */
+.scoreboard-row td:nth-child(2) .position-absolute {
+    left: 5px !important; /* 固定位置，避免被覆盖 */
+    font-size: 0.75rem !important; /* 进一步减小学校排名字体大小 */
+    color: #666 !important;
+}
+
+/* 队伍名称单元格样式 */
+.scoreboard-row td:nth-child(3) {
+    max-width: 220px; /* 增加最大宽度 */
+    min-width: 150px; /* 设置最小宽度 */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* 文本超出显示省略号 */
+    padding-left: 5px;
+    padding-right: 5px;
+    text-align: center; /* 居中显示文本 */
+    padding-top: 0.2rem; /* 减小顶部内边距 */
+    padding-bottom: 0.2rem; /* 减小底部内边距 */
+    font-size: 0.85rem; /* 减小字体大小 */
+}
+
+/* 队伍名称内部div */
+.scoreboard-row td:nth-child(3) > div {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-flex; /* 使用inline-flex使内容居中同时保持弹性布局 */
+    align-items: center;
+    justify-content: center; /* 内容居中 */
+}
+
+/* 解题数和罚时单元格样式 */
+.scoreboard-row td:nth-child(4),
+.scoreboard-row td:nth-child(5) {
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 0.2rem 0.15rem; /* 减小内边距 */
+}
+
+/* 队伍标记（女队、打星等）样式调整 */
+.girl-team-icon, .team-badge-star {
+    flex-shrink: 0; /* 防止图标被压缩 */
+    margin-left: 5px;
+}
+
+@media (max-width: 992px) {
+    /* 在中等屏幕上调整学校和队伍名称单元格 */
+    .scoreboard-row td:nth-child(2) {
+        max-width: 150px;
+    }
+    
+    .scoreboard-row td:nth-child(3) {
+        max-width: 180px;
+        min-width: 100px;
+    }
+}
+
+@media (max-width: 768px) {
+    /* 在小屏幕上进一步调整 */
+    #scoreboard-table {
+        font-size: 0.85rem;
+        line-height: 1; /* 移动设备上更紧凑的行高 */
+    }
+    
+    .scoreboard-row td:nth-child(2) {
+        max-width: 120px;
+        min-width: 80px;
+    }
+    
+    .scoreboard-row td:nth-child(3) {
+        max-width: 150px;
+        min-width: 90px;
+    }
+    
+    .problem-column,
+    .problem-cell {
+        width: 45px; /* 移动设备上更小 */
+        min-width: 45px;
+        max-width: 45px;
+        height: 48px; /* 移动设备上更小 */
+        padding: 0.15rem !important; /* 更小的内边距 */
+    }
+    
+    .result-status {
+        font-size: 0.95rem;
+        margin-bottom: 0.05rem;
+    }
+    
+    .result-details {
+        font-size: 0.7rem;
+    }
+    
+    #scoreboard-table td, 
+    #scoreboard-table th {
+        padding: 0.15rem; /* 移动设备上更小的内边距 */
+    }
+}
+
+/* 题目列样式 */
 .problem-column {
-    min-width: 60px;
+    width: 55px; /* 统一固定宽度 */
+    min-width: 55px;
+    max-width: 55px;
     text-align: center;
     font-weight: bold;
     transition: all 0.2s ease;
-    padding: 0.35rem 0.25rem !important;
+    padding: 0.25rem 0.2rem !important; /* 减小内边距 */
     border-left: 2px solid #fff !important;
     /* 模仿图片中的深绿色题目列头 */
     background-color: #4CAF50 !important;
@@ -91,19 +245,20 @@ body {
     background-color: rgba(0, 123, 255, 0.05);
 }
 
-.scoreboard-row td:first-child {
-    border-left: none;
+/* 移除表格条纹效果 */
+.scoreboard-row:nth-of-type(odd) > td {
+    background-color: transparent;
 }
 
-/* 自定义行条纹效果，跳过题目单元格 */
+/* 只在非题目单元格应用条纹效果 */
 .scoreboard-row:nth-of-type(odd) > td:not(.problem-cell) {
     background-color: rgba(0, 0, 0, 0.05);
 }
 
-/* 题目状态单元格 */
+/* 题目状态单元格 - 确保大小一致 */
 .problem-cell {
     text-align: center;
-    padding: 0.35rem 0.25rem !important;
+    padding: 0.25rem 0.2rem !important; /* 减小内边距 */
     position: relative;
     transition: all 0.2s ease;
     font-weight: 600;
@@ -111,8 +266,11 @@ body {
     border-bottom: 2px solid #fff !important;
     box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5);
     vertical-align: middle;
-    /* 移除可能影响背景色的样式 */
     background-color: transparent;
+    width: 55px; /* 与题目列标题宽度匹配 */
+    height: 55px; /* 固定高度 */
+    min-width: 55px;
+    max-width: 55px;
 }
 
 /* 为所有表格单元格添加底部白色边框 */
@@ -120,16 +278,16 @@ body {
     border-bottom: 2px solid #fff !important;
 }
 
-/* 单元格内容样式 */
+/* 单元格内容样式调整 */
 .result-status {
-    font-size: 1.1rem;
+    font-size: 1rem; /* 减小状态字体 */
     font-weight: bold;
     line-height: 1;
     margin-bottom: 0.1rem;
 }
 
 .result-details {
-    font-size: 0.8rem;
+    font-size: 0.75rem; /* 减小详情字体 */
     font-weight: 500;
 }
 
@@ -294,6 +452,31 @@ td.problem-cell.problem-first-to-solve {
         align-items: flex-end;
     }
     
+    .timer-card {
+        max-width: 100%;
+        padding: 10px 15px;
+    }
+    
+    .timer-row {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .timer-col {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .timer-label {
+        margin-bottom: 0;
+        margin-right: 10px;
+    }
+    
+    .timer-value {
+        font-size: 1.1rem;
+    }
+    
     .problem-column {
         min-width: 50px;
     }
@@ -301,4 +484,239 @@ td.problem-cell.problem-first-to-solve {
     .problem-cell {
         padding: 0.25rem 0.2rem !important;
     }
-} 
+}
+
+/* 比赛进度条相关样式 - 新版设计 */
+.contest-progress-container {
+    background-color: #fff;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    margin-bottom: 30px;
+    padding-bottom: 10px;
+}
+
+/* 蓝色顶部栏 */
+.progress-top-bar {
+    background-color: #007bff;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 24px;
+    align-items: center;
+    position: relative;
+}
+
+.progress-time-label {
+    font-size: 0.95rem;
+    font-weight: 500;
+    z-index: 2;
+}
+
+.start-time {
+    text-align: left;
+}
+
+.end-time {
+    text-align: right;
+}
+
+.progress-status {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    z-index: 2;
+}
+
+.status-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #1fffb8;
+}
+
+/* 进度条容器 */
+.progress-bar-container {
+    padding: 10px 24px 20px;
+    position: relative;
+    background-color: #fff;
+    margin-bottom: 10px; /* 添加底部margin，与图例分开 */
+}
+
+/* 进度条本身 */
+.contest-progress-bar {
+    height: 8px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    position: relative;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+/* 进度指示器（蓝色填充部分） */
+.progress-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background-color: #007bff;
+    border-radius: 4px;
+    width: 0%; /* 初始宽度，将通过JS动态设置 */
+}
+
+/* 拖动手柄 */
+.progress-handle {
+    position: absolute;
+    top: 50%;
+    left: 0; /* 初始位置，将通过JS动态设置 */
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    background-color: white;
+    border: 2px solid #007bff;
+    border-radius: 50%;
+    cursor: grab;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+}
+
+.progress-handle:active {
+    cursor: grabbing;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* 图例样式 */
+.progress-legend {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 12px 24px 24px;
+    background-color: #fff;
+    gap: 10px;
+    margin-bottom: 20px; /* 增加与底部的间距 */
+}
+
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 5px 12px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    border-radius: 20px;
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    height: 28px;
+}
+
+.legend-item.first-to-solve {
+    background-color: #3DB03D; /* 深绿色，与题目首A颜色一致 */
+    color: #fff;
+}
+
+.legend-item.solved {
+    background-color: #E1FFB5; /* 浅绿色，与题目通过颜色一致 */
+    color: #000;
+}
+
+.legend-item.attempted {
+    background-color: #FFD0D0; /* 浅红色，与题目未通过颜色一致 */
+    color: #000;
+}
+
+.legend-item.pending {
+    background-color: #fff9c4; /* 浅黄色，与题目待定颜色一致 */
+    color: #000;
+}
+
+/* 更好的响应式调整 */
+@media (max-width: 768px) {
+    .progress-top-bar {
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+    }
+    
+    .progress-time-label, 
+    .start-time, 
+    .end-time {
+        text-align: center;
+        width: 100%;
+    }
+    
+    .progress-status {
+        position: static;
+        transform: none;
+        margin: 8px 0;
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .progress-legend {
+        flex-wrap: wrap; /* 在小屏幕上允许换行 */
+        padding: 12px 15px 20px;
+    }
+    
+    .legend-item {
+        font-size: 0.8rem;
+        padding: 4px 10px;
+        margin-bottom: 5px;
+        height: 26px; /* 移动设备上稍微小一点 */
+    }
+    
+    /* 表格在小屏幕上的调整 */
+    #scoreboard-table {
+        font-size: 0.85rem;
+    }
+    
+    .problem-column,
+    .problem-cell {
+        width: 50px;
+        min-width: 50px;
+        max-width: 50px;
+        height: 50px;
+    }
+    
+    .result-status {
+        font-size: 1rem;
+    }
+    
+    .result-details {
+        font-size: 0.75rem;
+    }
+}
+
+/* 底部时间显示样式 */
+.contest-time-bottom-display {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 12px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e1e4e8;
+}
+
+/* 状态徽章样式 */
+#contest-status-badge {
+    color: #2196f3;
+}
+
+/* 修正图例样式 */
+.progress-legend {
+    padding: 3px 12px;
+}
+
+/* 移除以下不再需要的样式 */
+.progress-time-markers,
+.start-marker,
+.end-marker {
+    display: none;
+}
+
+/* 这里删除了各列宽度分配部分 */ 

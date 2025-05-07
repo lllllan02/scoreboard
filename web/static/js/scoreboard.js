@@ -14,9 +14,15 @@ let contestStatus = '';
 // 倒计时定时器
 let timerInterval = null;
 
+// 进度条拖动状态
+let isDragging = false;
+let progressBarWidth = 0;
+let contestDuration = 0;
+
 // 初始化页面
 document.addEventListener('DOMContentLoaded', function() {
-    // 移除样式代码 - 现已移至main.css文件中
+    // 格式化显示开始和结束时间
+    formatContestTimes();
     
     // 启动计时器（会立即调用updateTimeDisplay更新比赛状态）
     startTimer();
@@ -32,7 +38,229 @@ document.addEventListener('DOMContentLoaded', function() {
         loadScoreboardData();
         showNotification('记分板已刷新', 'success');
     });
+
+    // 初始化进度条功能
+    initProgressBar();
 });
+
+// 格式化显示比赛时间
+function formatContestTimes() {
+    // 获取开始和结束时间戳（秒）
+    const startTime = parseInt(contestInfo.startTime);
+    const endTime = parseInt(contestInfo.endTime);
+    
+    // 格式化为易读的日期时间
+    const startFormatted = formatDateTime(startTime);
+    const endFormatted = formatDateTime(endTime);
+    
+    // 更新显示
+    document.getElementById('start-time-fmt').textContent = startFormatted;
+    document.getElementById('end-time-fmt').textContent = endFormatted;
+}
+
+// 格式化为详细日期时间
+function formatDateTime(timestamp) {
+    const date = new Date(timestamp * 1000);
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
+}
+
+// 格式化为简短时间格式
+function formatShortTime(date) {
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    
+    return `${hours}:${minutes}`;
+}
+
+// 初始化进度条功能
+function initProgressBar() {
+    const progressBar = document.getElementById('contest-progress-bar');
+    const progressHandle = document.getElementById('progress-handle');
+    const progressIndicator = document.getElementById('progress-indicator');
+    const progressStatusText = document.getElementById('progress-status-text');
+
+    if (!progressBar || !progressHandle || !progressIndicator) {
+        console.log('进度条元素未找到，跳过初始化');
+        return;
+    }
+
+    // 计算比赛总时长（秒）
+    const startTime = parseInt(contestInfo.startTime);
+    const endTime = parseInt(contestInfo.endTime);
+    contestDuration = endTime - startTime;
+
+    // 设置进度条宽度（用于后续计算）
+    progressBarWidth = progressBar.offsetWidth;
+    
+    // 初始化进度条位置 - 设置为当前时间点
+    const now = getCurrentTimestamp();
+    const elapsedTime = now - startTime;
+    
+    if (contestDuration > 0) {
+        const progressPercentage = Math.min(100, Math.max(0, (elapsedTime / contestDuration) * 100));
+        progressHandle.style.left = `${progressPercentage}%`;
+        progressIndicator.style.width = `${progressPercentage}%`;
+        console.log('初始化进度条位置：', progressPercentage, '%');
+        
+        // 初始化时间显示
+        updateTimeFromProgress(progressPercentage);
+        
+        // 初始化状态显示
+        if (progressStatusText) {
+            progressStatusText.textContent = contestInfo.currentStatus;
+        }
+    }
+
+    // 鼠标按下事件
+    progressHandle.addEventListener('mousedown', function(e) {
+        isDragging = true;
+        document.body.style.cursor = 'grabbing';
+        e.preventDefault(); // 防止选择文本等默认行为
+    });
+
+    // 触摸开始事件（移动设备支持）
+    progressHandle.addEventListener('touchstart', function(e) {
+        isDragging = true;
+        e.preventDefault(); // 防止滚动等默认行为
+    });
+
+    // 鼠标移动事件（仅在拖动时响应）
+    document.addEventListener('mousemove', function(e) {
+        if (!isDragging) return;
+        
+        // 计算相对位置
+        const rect = progressBar.getBoundingClientRect();
+        let position = e.clientX - rect.left;
+        
+        // 限制在进度条范围内
+        position = Math.max(0, Math.min(position, rect.width));
+        
+        // 更新拖动手柄位置
+        const percentage = position / rect.width * 100;
+        progressHandle.style.left = `${percentage}%`;
+        progressIndicator.style.width = `${percentage}%`;
+        
+        // 计算对应时间并更新显示
+        updateTimeFromProgress(percentage);
+    });
+
+    // 触摸移动事件（移动设备支持）
+    document.addEventListener('touchmove', function(e) {
+        if (!isDragging) return;
+        
+        const touch = e.touches[0];
+        const rect = progressBar.getBoundingClientRect();
+        let position = touch.clientX - rect.left;
+        
+        // 限制在进度条范围内
+        position = Math.max(0, Math.min(position, rect.width));
+        
+        // 更新拖动手柄位置
+        const percentage = position / rect.width * 100;
+        progressHandle.style.left = `${percentage}%`;
+        progressIndicator.style.width = `${percentage}%`;
+        
+        // 计算对应时间并更新显示
+        updateTimeFromProgress(percentage);
+        
+        e.preventDefault(); // 防止滚动
+    });
+
+    // 鼠标释放事件（停止拖动）
+    document.addEventListener('mouseup', function() {
+        if (isDragging) {
+            isDragging = false;
+            document.body.style.cursor = 'default';
+            
+            // 可选：加载对应时间点的数据
+            loadScoreboardData();
+        }
+    });
+
+    // 触摸结束事件（移动设备支持）
+    document.addEventListener('touchend', function() {
+        if (isDragging) {
+            isDragging = false;
+            
+            // 可选：加载对应时间点的数据
+            loadScoreboardData();
+        }
+    });
+
+    // 点击进度条直接跳转
+    progressBar.addEventListener('click', function(e) {
+        // 确保不是拖动结束时的点击
+        if (isDragging) return;
+        
+        const rect = progressBar.getBoundingClientRect();
+        const position = e.clientX - rect.left;
+        const percentage = position / rect.width * 100;
+        
+        // 更新进度条位置
+        progressHandle.style.left = `${percentage}%`;
+        progressIndicator.style.width = `${percentage}%`;
+        
+        // 更新时间显示
+        updateTimeFromProgress(percentage);
+        
+        // 加载对应时间点的数据
+        loadScoreboardData();
+    });
+}
+
+// 格式化日期为tooltip显示格式
+function formatDateForTooltip(date) {
+    const hours = date.getUTCHours().toString().padStart(2, '0');
+    const minutes = date.getUTCMinutes().toString().padStart(2, '0');
+    const seconds = date.getUTCSeconds().toString().padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
+}
+
+// 根据进度百分比更新时间显示
+function updateTimeFromProgress(percentage) {
+    // 获取比赛起止时间
+    const startTime = parseInt(contestInfo.startTime);
+    const endTime = parseInt(contestInfo.endTime);
+    
+    // 计算对应的时间戳
+    const elapsedSeconds = (endTime - startTime) * (percentage / 100);
+    const currentTimestamp = startTime + elapsedSeconds;
+    
+    // 更新页面顶部的时间显示
+    const mainRemainingTime = document.getElementById('remaining-time');
+    const mainElapsedTime = document.getElementById('elapsed-time');
+    
+    if (mainRemainingTime) {
+        const remainingSeconds = Math.max(0, endTime - currentTimestamp);
+        mainRemainingTime.textContent = formatTimerDuration(remainingSeconds);
+    }
+    
+    if (mainElapsedTime) {
+        // 如果当前进度显示比赛已结束，固定显示总时长
+        const elapsedSeconds = (percentage >= 100) ? 
+            (endTime - startTime) : 
+            (currentTimestamp - startTime);
+        mainElapsedTime.textContent = formatTimerDuration(Math.max(0, elapsedSeconds));
+    }
+    
+    // 更新状态显示
+    const contestStatus = document.getElementById('contest-status');
+    if (contestStatus) {
+        if (percentage >= 100) {
+            contestStatus.textContent = '已结束';
+        } else if (percentage <= 0) {
+            contestStatus.textContent = '未开始';
+        } else {
+            contestStatus.textContent = '进行中';
+        }
+    }
+}
 
 // 根据背景色计算合适的文字颜色（黑色或白色）
 function getContrastColor(backgroundColor) {
@@ -163,6 +391,8 @@ function renderScoreboard(data) {
         const schoolCell = document.createElement('td');
         schoolCell.className = 'text-center position-relative';
         schoolCell.textContent = result.team.organization;
+        // 添加title属性，鼠标悬停时显示完整学校名称
+        schoolCell.title = result.team.organization;
         
         // 只在学校第一次出现时添加学校排名
         const schoolName = result.team.organization;
@@ -192,6 +422,8 @@ function renderScoreboard(data) {
         
         const teamName = document.createElement('div');
         teamName.textContent = result.team.name;
+        // 添加title属性，鼠标悬停时显示完整队名
+        teamName.title = result.team.name;
         
         if (result.team.girl) {
             const girlContainer = document.createElement('span');
@@ -413,36 +645,81 @@ function startTimer() {
 
 // 更新时间显示
 function updateTimeDisplay() {
+    // 获取当前时间戳（秒）
     const now = getCurrentTimestamp();
     
-    // 计算剩余时间和已用时间（秒）
-    const remainingTime = contestInfo.endTime - now;
-    const elapsedTime = now - contestInfo.startTime;
+    // 获取比赛时间信息
+    const startTime = parseInt(contestInfo.startTime);
+    const endTime = parseInt(contestInfo.endTime);
+    const frozenTime = contestInfo.frozenTime ? parseInt(contestInfo.frozenTime) : null;
     
-    // 更新显示 - 这里仍使用时分秒格式
-    document.getElementById('remaining-time').textContent = formatTimerDuration(Math.max(0, remainingTime));
-    document.getElementById('elapsed-time').textContent = formatTimerDuration(Math.max(0, elapsedTime));
+    // 更新比赛状态和相应颜色
+    const statusElem = document.getElementById('contest-status');
+    const progressStatusText = document.getElementById('progress-status-text');
+    const statusIndicator = document.querySelector('.status-indicator');
     
-    // 更新比赛状态
-    let status = '';
-    if (now < contestInfo.startTime) {
-        status = '未开始';
-    } else if (now > contestInfo.endTime) {
-        status = '已结束';
+    let newStatus = '';
+    let indicatorColor = '';
+    
+    if (now < startTime) {
+        // 比赛未开始
+        newStatus = '未开始';
+        indicatorColor = '#ffc107'; // 黄色
+        
+        // 计算距离开始的剩余时间
+        const remainingSeconds = startTime - now;
+        document.getElementById('remaining-time').textContent = formatTimerDuration(remainingSeconds);
+        document.getElementById('elapsed-time').textContent = '00:00:00'; // 未开始时已用时间为0
+        
+    } else if (now >= startTime && now <= endTime) {
+        // 比赛进行中
+        newStatus = '进行中';
+        indicatorColor = '#1fffb8'; // 绿色
+        
+        // 计算剩余时间和已用时间
+        const remainingSeconds = endTime - now;
+        const elapsedSeconds = now - startTime;
+        
+        document.getElementById('remaining-time').textContent = formatTimerDuration(remainingSeconds);
+        document.getElementById('elapsed-time').textContent = formatTimerDuration(elapsedSeconds);
+        
+        // 检查是否冻结
+        if (frozenTime && now >= frozenTime) {
+            newStatus = '已冻结';
+            indicatorColor = '#ff9800'; // 橙色
+        }
+        
     } else {
-        status = '进行中';
+        // 比赛已结束
+        newStatus = '已结束';
+        indicatorColor = '#f44336'; // 红色
+        
+        document.getElementById('remaining-time').textContent = '00:00:00'; // 结束后剩余时间为0
+        
+        // 比赛结束后，已用时间固定显示为比赛总时长
+        const totalContestSeconds = endTime - startTime;
+        document.getElementById('elapsed-time').textContent = formatTimerDuration(totalContestSeconds);
     }
     
-    document.getElementById('contest-status').textContent = status;
+    // 更新状态文本和颜色
+    if (statusElem && statusElem.textContent !== newStatus) {
+        statusElem.textContent = newStatus;
+        contestStatus = newStatus; // 更新全局状态变量
+    }
     
-    // 记录首次调用时的状态，或检查状态是否变化并重新加载数据
-    if (contestStatus === '') {
-        // 首次调用时仅设置状态，不加载数据
-        contestStatus = status;
-    } else if (status !== contestStatus) {
-        // 状态变化时更新状态并重新加载数据
-        contestStatus = status;
-        loadScoreboardData();
+    // 更新进度条状态显示
+    if (progressStatusText) {
+        progressStatusText.textContent = newStatus;
+    }
+    
+    // 更新状态指示器颜色
+    if (statusIndicator) {
+        statusIndicator.style.backgroundColor = indicatorColor;
+    }
+    
+    // 更新进度条位置（如果不在拖动状态）
+    if (!isDragging) {
+        updateProgressBar(now);
     }
 }
 
@@ -457,6 +734,11 @@ function formatTimerDuration(seconds) {
     const secs = Math.floor(seconds % 60);
     
     return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+// 获取当前时间戳（秒）
+function getCurrentTimestamp() {
+    return Math.floor(Date.now() / 1000);
 }
 
 // 显示错误信息
@@ -487,4 +769,39 @@ function showErrorMessage(message) {
         `;
         loadScoreboardData();
     });
+}
+
+// 更新进度条位置
+function updateProgressBar(currentTime) {
+    const startTime = parseInt(contestInfo.startTime);
+    const endTime = parseInt(contestInfo.endTime);
+    
+    // 计算比赛总时长
+    const contestDuration = endTime - startTime;
+    
+    if (contestDuration <= 0) return; // 防止除以零
+    
+    // 计算当前进度百分比
+    let progressPercentage = 0;
+    
+    if (currentTime < startTime) {
+        // 比赛未开始
+        progressPercentage = 0;
+    } else if (currentTime > endTime) {
+        // 比赛已结束
+        progressPercentage = 100;
+    } else {
+        // 比赛进行中
+        const elapsedTime = currentTime - startTime;
+        progressPercentage = Math.min(100, (elapsedTime / contestDuration) * 100);
+    }
+    
+    // 更新进度条和手柄位置
+    const progressHandle = document.getElementById('progress-handle');
+    const progressIndicator = document.getElementById('progress-indicator');
+    
+    if (progressHandle && progressIndicator) {
+        progressHandle.style.left = `${progressPercentage}%`;
+        progressIndicator.style.width = `${progressPercentage}%`;
+    }
 } 
