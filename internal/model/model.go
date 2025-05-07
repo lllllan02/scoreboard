@@ -22,6 +22,7 @@ type Contest struct {
 	ProblemIDs     []string                  `json:"problem_id"`
 	Groups         map[string]string         `json:"group"`
 	Organization   string                    `json:"organization"`
+	Type           string                    `json:"type,omitempty"`
 	StatusTimeShow map[string]bool           `json:"status_time_display"`
 	MedalRanks     map[string]map[string]int `json:"medal"`
 	BalloonColors  []BalloonColor            `json:"balloon_color"`
@@ -157,19 +158,16 @@ func LoadAllContests() (map[string]*Contest, error) {
 			return nil, fmt.Errorf("failed to parse directory.json: %w", err)
 		}
 
-		// 从目录加载基本信息，然后按需加载详细配置
+		// 直接使用目录中的基本信息创建Contest对象
 		for contestID, contestInfo := range directory.Contests {
-			contest, err := LoadContestConfig(contestID)
-			if err != nil {
-				// 如果无法加载详细配置，则使用目录中的基本信息创建一个简化版Contest
-				contest = &Contest{
-					ID:           contestID,
-					Name:         contestInfo.Name,
-					StartTime:    contestInfo.StartTime,
-					EndTime:      contestInfo.EndTime,
-					Organization: contestInfo.Organization,
-					dataDir:      dataDir,
-				}
+			contest := &Contest{
+				ID:           contestID,
+				Name:         contestInfo.Name,
+				StartTime:    contestInfo.StartTime,
+				EndTime:      contestInfo.EndTime,
+				Organization: contestInfo.Organization,
+				Type:         contestInfo.Type,
+				dataDir:      dataDir,
 			}
 			contestsMap[contestID] = contest
 		}
