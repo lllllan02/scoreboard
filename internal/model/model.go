@@ -80,6 +80,44 @@ type Run struct {
 	Language  string `json:"language"`
 }
 
+// GetStatus 获取比赛当前状态
+func (c *Contest) GetStatus() string {
+	now := time.Now().Unix()
+
+	if now < c.StartTime {
+		return "PENDING"
+	} else if now <= c.EndTime {
+		return "RUNNING"
+	} else {
+		return "FINISHED"
+	}
+}
+
+// GetTimeInfo 获取比赛时间相关信息
+func (c *Contest) GetTimeInfo() map[string]interface{} {
+	now := time.Now().Unix()
+
+	timeInfo := map[string]interface{}{
+		"start_time":     c.StartTime,
+		"end_time":       c.EndTime,
+		"frozen_time":    c.FrozenTime,
+		"current_time":   now,
+		"remaining_time": c.EndTime - now,
+		"elapsed_time":   now - c.StartTime,
+		"total_time":     c.EndTime - c.StartTime,
+	}
+
+	if now < c.StartTime {
+		timeInfo["status"] = "PENDING"
+	} else if now <= c.EndTime {
+		timeInfo["status"] = "RUNNING"
+	} else {
+		timeInfo["status"] = "FINISHED"
+	}
+
+	return timeInfo
+}
+
 // Result 表示队伍的比赛结果
 type Result struct {
 	TeamID         string                    `json:"team_id"`
@@ -536,43 +574,6 @@ func (c *Contest) GetVisibleResults() ([]*Result, error) {
 	results, err := c.CalculateResults()
 	if err != nil {
 		return nil, err
-	}
-
-	// 按排名排序
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].Rank < results[j].Rank
-	})
-
-	return results, nil
-}
-
-// GetFilteredResults 获取过滤后的结果
-func (c *Contest) GetFilteredResults(group string) ([]*Result, error) {
-	// 计算结果
-	allResults, err := c.CalculateResults()
-	if err != nil {
-		return nil, err
-	}
-
-	var results []*Result
-
-	for _, result := range allResults {
-		// 如果指定了组别，则过滤
-		if group != "" {
-			found := false
-			for _, g := range result.Team.Groups {
-				if g == group {
-					found = true
-					break
-				}
-			}
-
-			if !found {
-				continue
-			}
-		}
-
-		results = append(results, result)
 	}
 
 	// 按排名排序

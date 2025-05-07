@@ -39,7 +39,7 @@ func IndexHandler(svc *service.ScoreboardService) http.HandlerFunc {
 		}
 
 		data := map[string]interface{}{
-			"Title":    "XCPC记分板",
+			"Title":    "Scoreboard",
 			"Contests": contests,
 		}
 
@@ -59,37 +59,21 @@ func ContestHandler(svc *service.ScoreboardService) http.HandlerFunc {
 		// 获取比赛信息
 		contest, err := svc.GetContest(contestID)
 		if err != nil {
+			log.Printf("获取比赛信息失败: %v", err)
 			http.NotFound(w, r)
 			return
 		}
 
-		// 获取分组信息
-		groups, err := svc.GetContestGroups(contestID)
-		if err != nil {
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		// 获取比赛状态
-		status, err := svc.GetContestStatus(contestID)
-		if err != nil {
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		// 获取时间信息
-		timeInfo, err := svc.GetTimeInfo(contestID)
-		if err != nil {
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
+		// 直接使用contest对象的方法获取状态和时间信息
+		status := contest.GetStatus()
+		timeInfo := contest.GetTimeInfo()
 
 		// 准备模板数据
 		data := map[string]interface{}{
 			"Title":        contest.Name,
 			"Contest":      contest,
 			"ContestID":    contestID,
-			"Groups":       groups,
+			"Groups":       contest.Groups, // 直接从contest中获取
 			"Status":       status,
 			"TimeInfo":     timeInfo,
 			"ProblemIDs":   contest.ProblemIDs,
@@ -153,7 +137,6 @@ func ScoreboardHandler(svc *service.ScoreboardService) http.HandlerFunc {
 			"results": results,
 		}
 
-		log.Printf("返回记分板数据成功")
 		respondJSON(w, http.StatusOK, response)
 	}
 }

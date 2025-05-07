@@ -76,6 +76,16 @@ func (s *ScoreboardService) GetContest(contestID string) (*model.Contest, error)
 	return contest, nil
 }
 
+// GetContestStatus 获取比赛状态 - 使用模型层方法
+func (s *ScoreboardService) GetContestStatus(contest *model.Contest) string {
+	return contest.GetStatus()
+}
+
+// GetTimeInfo 获取比赛时间信息 - 使用模型层方法
+func (s *ScoreboardService) GetTimeInfo(contest *model.Contest) map[string]interface{} {
+	return contest.GetTimeInfo()
+}
+
 // GetScoreboardWithFilter 统一处理所有筛选参数获取记分板数据
 func (s *ScoreboardService) GetScoreboardWithFilter(contestID string, filterParams map[string]string) ([]*model.Result, *model.Contest, error) {
 	// 获取比赛信息
@@ -244,62 +254,4 @@ func recalculateRanking(results []*model.Result) {
 			}
 		}
 	}
-}
-
-// GetContestGroups 获取比赛的所有分组
-func (s *ScoreboardService) GetContestGroups(contestID string) (map[string]string, error) {
-	contest, err := s.GetContest(contestID)
-	if err != nil {
-		return nil, err
-	}
-
-	return contest.Groups, nil
-}
-
-// GetContestStatus 获取比赛状态
-func (s *ScoreboardService) GetContestStatus(contestID string) (string, error) {
-	contest, err := s.GetContest(contestID)
-	if err != nil {
-		return "", err
-	}
-
-	now := time.Now().Unix()
-
-	if now < contest.StartTime {
-		return "PENDING", nil
-	} else if now <= contest.EndTime {
-		return "RUNNING", nil
-	} else {
-		return "FINISHED", nil
-	}
-}
-
-// GetTimeInfo 获取比赛时间信息
-func (s *ScoreboardService) GetTimeInfo(contestID string) (map[string]interface{}, error) {
-	contest, err := s.GetContest(contestID)
-	if err != nil {
-		return nil, err
-	}
-
-	now := time.Now().Unix()
-
-	timeInfo := map[string]interface{}{
-		"start_time":     contest.StartTime,
-		"end_time":       contest.EndTime,
-		"frozen_time":    contest.FrozenTime,
-		"current_time":   now,
-		"remaining_time": contest.EndTime - now,
-		"elapsed_time":   now - contest.StartTime,
-		"total_time":     contest.EndTime - contest.StartTime,
-	}
-
-	if now < contest.StartTime {
-		timeInfo["status"] = "PENDING"
-	} else if now <= contest.EndTime {
-		timeInfo["status"] = "RUNNING"
-	} else {
-		timeInfo["status"] = "FINISHED"
-	}
-
-	return timeInfo, nil
 }
