@@ -216,6 +216,59 @@ body {
     #scoreboard-table th {
         padding: 0.15rem; /* 移动设备上更小的内边距 */
     }
+    
+    .content-alignment-container {
+        padding: 0 15px;
+    }
+    
+    .progress-time-info {
+        margin-top: 8px;
+        margin-bottom: 5px;
+        font-size: 0.8rem;
+    }
+    
+    .progress-legend {
+        flex-wrap: wrap;
+        gap: 5px;
+        justify-content: center;
+        padding: 0 0 8px;
+    }
+    
+    .legend-item {
+        padding: 2px 8px;
+        font-size: 0.75rem;
+        height: 22px;
+    }
+    
+    .progress-bar-container {
+        padding: 8px 15px 3px;
+    }
+    
+    .progress-bottom-row {
+        padding: 0 15px 8px;
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+    
+    .elapsed-time, .remaining-time {
+        font-size: 0.8rem;
+        flex: none;
+        width: 50%;
+    }
+    
+    .progress-legend {
+        order: 3; /* 将图例放到第三位 */
+        width: 100%;
+        justify-content: center;
+        margin-top: 5px;
+        flex: none;
+    }
+    
+    .legend-item {
+        padding: 2px 8px;
+        font-size: 0.75rem;
+        height: 22px;
+    }
 }
 
 /* 题目列样式 */
@@ -488,107 +541,50 @@ td.problem-cell.problem-first-to-solve {
 
 /* 比赛进度条相关样式 - 新版设计 */
 .contest-progress-container {
-    background-color: #fff;
-    border-radius: 24px;
-    overflow: hidden;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-    margin-bottom: 30px;
-    padding-bottom: 10px;
+    background-color: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    padding: 15px 5px; /* 减小左右内边距 */
+    margin-bottom: 20px;
+    position: relative;
+    max-width: 100%; /* 确保最大宽度 */
 }
 
-/* 蓝色顶部栏 */
-.progress-top-bar {
-    background-color: #007bff;
-    color: white;
+/* 对齐容器 */
+.content-alignment-container {
+    display: flex;
+    flex-direction: column;
+    padding: 0 24px;
+}
+
+/* 时间信息显示 */
+.progress-time-info {
     display: flex;
     justify-content: space-between;
-    padding: 12px 24px;
     align-items: center;
-    position: relative;
+    margin-top: 10px;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+    color: #333;
+    padding: 0; /* 移除内边距，因为已经在容器上添加了 */
 }
 
-.progress-time-label {
-    font-size: 0.95rem;
+/* 已用时间 */
+.elapsed-time {
     font-weight: 500;
-    z-index: 2;
-}
-
-.start-time {
+    color: #333; /* 修改为正常黑色 */
+    font-size: 0.9rem;
+    flex: 1;
     text-align: left;
 }
 
-.end-time {
-    text-align: right;
-}
-
-.progress-status {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    align-items: center;
-    gap: 6px;
+/* 剩余时间 */
+.remaining-time {
+    font-weight: 500;
+    color: #333; /* 同样修改为正常黑色，保持一致 */
     font-size: 0.9rem;
-    font-weight: 600;
-    z-index: 2;
-}
-
-.status-indicator {
-    display: inline-block;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background-color: #1fffb8;
-}
-
-/* 进度条容器 */
-.progress-bar-container {
-    padding: 10px 24px 20px;
-    position: relative;
-    background-color: #fff;
-    margin-bottom: 10px; /* 添加底部margin，与图例分开 */
-}
-
-/* 进度条本身 */
-.contest-progress-bar {
-    height: 8px;
-    background-color: #e9ecef;
-    border-radius: 4px;
-    position: relative;
-    cursor: pointer;
-    overflow: hidden;
-}
-
-/* 进度指示器（蓝色填充部分） */
-.progress-indicator {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    background-color: #007bff;
-    border-radius: 4px;
-    width: 0%; /* 初始宽度，将通过JS动态设置 */
-}
-
-/* 拖动手柄 */
-.progress-handle {
-    position: absolute;
-    top: 50%;
-    left: 0; /* 初始位置，将通过JS动态设置 */
-    transform: translate(-50%, -50%);
-    width: 20px;
-    height: 20px;
-    background-color: white;
-    border: 2px solid #007bff;
-    border-radius: 50%;
-    cursor: grab;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    z-index: 10;
-}
-
-.progress-handle:active {
-    cursor: grabbing;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    flex: 1;
+    text-align: right;
 }
 
 /* 图例样式 */
@@ -596,23 +592,22 @@ td.problem-cell.problem-first-to-solve {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 12px 24px 24px;
-    background-color: #fff;
+    padding: 0 0 10px;
     gap: 10px;
-    margin-bottom: 20px; /* 增加与底部的间距 */
+    margin-bottom: 5px;
 }
 
 .legend-item {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 5px 12px;
-    font-size: 0.85rem;
+    padding: 3px 10px;
+    font-size: 0.8rem;
     white-space: nowrap;
     border-radius: 20px;
     font-weight: 500;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    height: 28px;
+    height: 24px;
 }
 
 .legend-item.first-to-solve {
@@ -635,13 +630,150 @@ td.problem-cell.problem-first-to-solve {
     color: #000;
 }
 
+/* 蓝色顶部栏 */
+.progress-top-bar {
+    background-color: #ffffff;
+    color: #333;
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 5px 6px; /* 减小上下内边距 */
+    align-items: center;
+    position: relative;
+    border-bottom: none;
+    margin-bottom: 6px; /* 减小底部边距，使其更贴近进度条 */
+}
+
+.progress-time-label {
+    font-size: 0.95rem;
+    font-weight: 500;
+    z-index: 2;
+    color: #333; /* 确保文字颜色为深色 */
+}
+
+.start-time {
+    text-align: left;
+}
+
+.end-time {
+    text-align: right;
+}
+
+.progress-status {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    z-index: 2;
+    color: #333; /* 确保文字颜色为深色 */
+}
+
+.status-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,0,0,0.1); /* 添加边框 */
+    margin-right: 2px;
+}
+
+/* 进度条容器 */
+.progress-bar-container {
+    padding: 0px 5px; /* 保持左右内边距 */
+    position: relative;
+    background-color: #fff;
+    margin-bottom: 6px; /* 减小底部边距，使其与下方内容更贴近 */
+}
+
+/* 进度条本身 */
+.contest-progress-bar {
+    height: 12px; /* 增加高度，使进度条更宽 */
+    background-color: #e9ecef;
+    border-radius: 6px; /* 调整圆角以匹配新高度 */
+    position: relative;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+/* 进度指示器（蓝色填充部分） */
+.progress-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background-color: #007bff;
+    border-radius: 6px; /* 调整圆角以匹配新高度 */
+    width: 0%; /* 初始宽度，将通过JS动态设置 */
+}
+
+/* 拖动手柄 */
+.progress-handle {
+    position: absolute;
+    top: 50%;
+    left: 0; /* 初始位置，将通过JS动态设置 */
+    transform: translate(-50%, -50%);
+    width: 24px; /* 增大手柄尺寸 */
+    height: 24px; /* 增大手柄尺寸 */
+    background-color: white;
+    border: 2px solid #007bff;
+    border-radius: 50%;
+    cursor: grab;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+}
+
+.progress-handle:active {
+    cursor: grabbing;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* 进度条下方的行 */
+.progress-bottom-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 5px; /* 保持左右内边距 */
+    background-color: #fff;
+    margin-top: 0; /* 确保没有顶部边距 */
+}
+
+/* 图例样式 */
+.progress-legend {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    flex: 3;
+}
+
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 10px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    border-radius: 20px;
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    height: 24px;
+}
+
+/* 移除未使用的样式 */
+.content-alignment-container, .progress-time-info {
+    display: none;
+}
+
 /* 更好的响应式调整 */
 @media (max-width: 768px) {
     .progress-top-bar {
         flex-direction: column;
         align-items: center;
-        gap: 8px;
-        padding: 12px 16px;
+        gap: 5px;
+        padding: 10px 16px;
     }
     
     .progress-time-label, 
@@ -649,14 +781,16 @@ td.problem-cell.problem-first-to-solve {
     .end-time {
         text-align: center;
         width: 100%;
+        font-size: 0.9rem;
     }
     
     .progress-status {
         position: static;
         transform: none;
-        margin: 8px 0;
+        margin: 5px 0;
         width: 100%;
         justify-content: center;
+        font-size: 0.85rem;
     }
     
     .progress-legend {
@@ -691,6 +825,29 @@ td.problem-cell.problem-first-to-solve {
     .result-details {
         font-size: 0.75rem;
     }
+    
+    .progress-time-info {
+        flex-direction: row; /* 保持水平排列 */
+        padding: 0 15px;
+        font-size: 0.8rem;
+    }
+    
+    .elapsed-time, .remaining-time {
+        min-width: auto;
+    }
+    
+    .progress-legend {
+        flex-wrap: wrap;
+        gap: 5px;
+        justify-content: center;
+        padding: 0 15px 10px;
+    }
+    
+    .legend-item {
+        padding: 2px 8px;
+        font-size: 0.75rem;
+        height: 22px;
+    }
 }
 
 /* 底部时间显示样式 */
@@ -719,4 +876,20 @@ td.problem-cell.problem-first-to-solve {
     display: none;
 }
 
-/* 这里删除了各列宽度分配部分 */ 
+/* 这里删除了各列宽度分配部分 */
+
+.progress-time-info .legend-item.first-to-solve {
+    display: none;
+}
+
+.progress-time-info .legend-item.solved {
+    display: none;
+}
+
+.progress-time-info .legend-item.attempted {
+    display: none;
+}
+
+.progress-time-info .legend-item.pending {
+    display: none;
+} 

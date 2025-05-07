@@ -21,26 +21,11 @@
                         <span class="badge bg-primary">{{ .ContestID }}</span>
                         <span class="badge bg-info">{{ .Status }}</span>
                     </div>
+                    <!-- 隐藏的状态元素，用于JS状态管理 -->
+                    <div id="contest-status" class="d-none">{{ .Status }}</div>
                 </div>
                 <div class="col-md-5">
-                    <div class="timer-container text-end">
-                        <div class="timer-card">
-                            <div class="timer-row">
-                                <div class="timer-col">
-                                    <div class="timer-label">状态</div>
-                                    <div class="timer-value" id="contest-status">{{ .Status }}</div>
-                                </div>
-                                <div class="timer-col">
-                                    <div class="timer-label">剩余时间</div>
-                                    <div class="timer-value" id="remaining-time">--:--:--</div>
-                                </div>
-                                <div class="timer-col">
-                                    <div class="timer-label">已用时间</div>
-                                    <div class="timer-value" id="elapsed-time">--:--:--</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <!-- 状态小版块已移除 -->
                 </div>
             </div>
         </header>
@@ -67,12 +52,16 @@
                         </div>
                     </div>
                     
-                    <!-- 图例 - 仅保留题目状态标签 -->
-                    <div class="progress-legend">
-                        <div class="legend-item first-to-solve">First to solve</div>
-                        <div class="legend-item solved">Solved</div>
-                        <div class="legend-item attempted">Attempted</div>
-                        <div class="legend-item pending">Pending</div>
+                    <!-- 三个元素水平对齐 -->
+                    <div class="progress-bottom-row">
+                        <div class="elapsed-time">已用时间: <span id="elapsed-time">--:--:--</span></div>
+                        <div class="progress-legend">
+                            <div class="legend-item first-to-solve">First to solve</div>
+                            <div class="legend-item solved">Solved</div>
+                            <div class="legend-item attempted">Attempted</div>
+                            <div class="legend-item pending">Pending</div>
+                        </div>
+                        <div class="remaining-time">剩余时间: <span id="remaining-time">--:--:--</span></div>
                     </div>
                 </div>
             </div>
