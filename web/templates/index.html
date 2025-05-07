@@ -9,8 +9,21 @@
     <link rel="stylesheet" href="/static/css/main.css?v=1.9">
 </head>
 <body>
+    <!-- 简化导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/"><i class="bi bi-bar-chart-line"></i> Scoreboard</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <!-- 首页不需要额外的导航项 -->
+            </div>
+        </div>
+    </nav>
+
     <div class="container mt-4">
-        <h1 class="text-center mb-4">XCPC记分板</h1>
+        <h1 class="text-center mb-4">Scoreboard</h1>
         
         <div class="row">
             <div class="col-md-10 offset-md-1">
@@ -60,7 +73,7 @@
 
     <footer class="mt-5 py-3 text-center text-muted">
         <div class="container">
-            <p>&copy; 2023 XCPC记分板 | 开源项目</p>
+            <p>&copy; 2023 Scoreboard | 开源项目</p>
         </div>
     </footer>
 

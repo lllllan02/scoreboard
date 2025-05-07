@@ -892,4 +892,38 @@ td.problem-cell.problem-first-to-solve {
 
 .progress-time-info .legend-item.pending {
     display: none;
+}
+
+/* 导航栏样式 */
+.navbar {
+    padding: 0.5rem 1rem;
+    background-color: #ffffff !important;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.navbar-brand {
+    font-weight: 600;
+    color: #007bff !important;
+    font-size: 1.1rem;
+}
+
+.navbar-brand i {
+    margin-right: 5px;
+    font-size: 1.1rem;
+}
+
+.nav-link {
+    font-weight: 500;
+    color: #333;
+    padding: 0.5rem 1rem;
+}
+
+.nav-link.active {
+    color: #007bff !important;
+    background-color: rgba(0,123,255,0.05);
+    border-radius: 4px;
+}
+
+.nav-link i {
+    margin-right: 5px;
 } 
