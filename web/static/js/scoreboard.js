@@ -193,21 +193,6 @@ function renderScoreboard(data) {
         const teamName = document.createElement('div');
         teamName.textContent = result.team.name;
         
-        // if (result.team.undergraduate) {
-        //     const badge = document.createElement('span');
-        //     badge.className = 'team-badge team-badge-undergrad';
-        //     badge.textContent = '本科';
-        //     teamName.appendChild(badge);
-        // }
-        
-
-        // if (result.team.vocational) {
-        //     const badge = document.createElement('span');
-        //     badge.className = 'team-badge team-badge-vocational';
-        //     badge.textContent = '高职';
-        //     teamName.appendChild(badge);
-        // }
-
         if (result.team.girl) {
             const girlContainer = document.createElement('span');
             girlContainer.className = 'girl-team-icon'; 
@@ -252,6 +237,8 @@ function renderScoreboard(data) {
                 if (problemResult.solved) {
                     // 题目已解决，显示为 + 提交次数/通过时间
                     problemCell.classList.add('problem-solved');
+                    
+                    // 如果是首A，使用深绿色背景
                     if (problemResult.first_to_solve) {
                         problemCell.classList.add('problem-first-to-solve');
                     }
@@ -261,10 +248,13 @@ function renderScoreboard(data) {
                     // 获取通过时间（后端已经以分钟为单位返回）
                     const solvedTimeMinutes = problemResult.solved_time;
                     
+                    // 首A时使用白色文字，否则使用深绿色文字
+                    const statusClass = problemResult.first_to_solve ? 'text-white' : '';
+                    
                     // 新的格式: + 1/分钟数
                     problemCell.innerHTML = `
-                        <div class="result-status">+</div>
-                        <div class="result-details">1/${solvedTimeMinutes}</div>
+                        <div class="result-status ${statusClass}">+</div>
+                        <div class="result-details ${statusClass}">${totalAttempts}/${solvedTimeMinutes}</div>
                     `;
                 } else if (problemResult.attempts > 0) {
                     // 尝试但未解决，显示为 - 提交次数
@@ -355,22 +345,28 @@ function updateProblemColumnStyles(problemIds, balloonColors, problemStatsMap) {
             `;
         }
         
+        // 默认使用深绿色作为题目列头背景
+        let backgroundColor = '#4CAF50';
+        
+        // 如果后端提供了气球颜色，则使用后端提供的颜色
         if (balloonColor.background_color) {
-            // 使用灰度级别公式判断文字颜色
-            const textColor = getContrastColor(balloonColor.background_color);
-            
-            // 构建样式字符串
-            let styleString = `background-color: ${balloonColor.background_color} !important;`;
-            
-            // 如果后端明确指定了文字颜色，优先使用后端指定的，否则使用自动计算的对比色
-            styleString += ` color: ${textColor} !important;`;
-            
-            // 一次性设置样式，避免多次覆盖
-            column.setAttribute('style', styleString);
-            
-            // 添加调试信息
-            console.log(`题目 ${problemIds[index]}: 背景色=${balloonColor.background_color}, 文字颜色=${textColor}, 最终颜色=${column.style.color}`);
+            backgroundColor = balloonColor.background_color;
         }
+        
+        // 使用灰度级别公式判断文字颜色
+        const textColor = getContrastColor(backgroundColor);
+        
+        // 构建样式字符串
+        let styleString = `background-color: ${backgroundColor} !important;`;
+        
+        // 如果后端明确指定了文字颜色，优先使用后端指定的，否则使用自动计算的对比色
+        styleString += ` color: ${textColor} !important;`;
+        
+        // 一次性设置样式，避免多次覆盖
+        column.setAttribute('style', styleString);
+        
+        // 添加调试信息
+        console.log(`题目 ${problemIds[index]}: 背景色=${backgroundColor}, 文字颜色=${textColor}, 最终颜色=${column.style.color}`);
     });
 }
 

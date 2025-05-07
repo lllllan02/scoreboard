@@ -74,6 +74,9 @@ body {
     transition: all 0.2s ease;
     padding: 0.35rem 0.25rem !important;
     border-left: 2px solid #fff !important;
+    /* 模仿图片中的深绿色题目列头 */
+    background-color: #4CAF50 !important;
+    color: white !important;
 }
 
 /* 题目统计信息样式 */
@@ -92,6 +95,11 @@ body {
     border-left: none;
 }
 
+/* 自定义行条纹效果，跳过题目单元格 */
+.scoreboard-row:nth-of-type(odd) > td:not(.problem-cell) {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
 /* 题目状态单元格 */
 .problem-cell {
     text-align: center;
@@ -100,8 +108,16 @@ body {
     transition: all 0.2s ease;
     font-weight: 600;
     border-left: 2px solid #fff !important;
+    border-bottom: 2px solid #fff !important;
     box-shadow: inset 0 0 0 1px rgba(255,255,255,0.5);
     vertical-align: middle;
+    /* 移除可能影响背景色的样式 */
+    background-color: transparent;
+}
+
+/* 为所有表格单元格添加底部白色边框 */
+#scoreboard-table td {
+    border-bottom: 2px solid #fff !important;
 }
 
 /* 单元格内容样式 */
@@ -119,17 +135,17 @@ body {
 
 /* 通过题目单元格中的加号 */
 .problem-solved .result-status {
-    color: #28a745;
+    color: #000000; /* 黑色 */
 }
 
 /* 未通过题目单元格中的减号 */
 .problem-failed .result-status {
-    color: #dc3545;
+    color: #000000; /* 黑色 */
 }
 
 /* 待定题目单元格中的问号 */
 .problem-pending .result-status {
-    color: #ffc107;
+    color: #000000; /* 黑色 */
 }
 
 /* 罚时信息样式 */
@@ -140,40 +156,56 @@ body {
     margin-top: 0.1rem;
 }
 
-.problem-solved {
-    background-color: #d4edda;
+/* 更新为更鲜明的浅绿色，并使用更高优先级的选择器 */
+td.problem-cell.problem-solved {
+    background-color: #E1FFB5 !important; /* 浅绿色 Light Green */
 }
 
-.problem-failed {
-    background-color: #f8d7da;
+/* 通过题目单元格中的详细信息使用黑色 */
+.problem-solved .result-details {
+    color: #000000; /* 黑色 */
 }
 
-.problem-pending {
-    background-color: #fff3cd;
+/* 确保未通过题目也有正确的红色背景 */
+td.problem-cell.problem-failed {
+    background-color: #FFD0D0 !important; /* 较淡的红色 */
 }
 
-.problem-first-to-solve {
+/* 未通过题目单元格中的详细信息也使用黑色 */
+.problem-failed .result-details {
+    color: #000000; /* 黑色 */
+}
+
+/* 确保待定题目有正确的黄色背景 */
+td.problem-cell.problem-pending {
+    background-color: #fff9c4 !important; /* 浅黄色 */
+}
+
+/* 待定题目单元格中的详细信息使用黑色 */
+.problem-pending .result-details {
+    color: #000000; /* 黑色 */
+}
+
+/* 首A题目使用深绿色 */
+td.problem-cell.problem-first-to-solve {
     position: relative;
+    background-color: #3DB03D !important; /* 深绿色，模仿图片 */
 }
 
+/* 首A题目中的所有文字都使用白色 */
+.problem-first-to-solve .result-status,
+.problem-first-to-solve .result-details {
+    color: white !important; /* 使用!important确保覆盖其他样式 */
+}
+
+/* 移除原有三角形标记 */
 .problem-first-to-solve::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    right: 0;
-    border-style: solid;
-    border-width: 0 12px 12px 0;
-    border-color: transparent #28a745 transparent transparent;
+    content: none;
 }
 
-/* 显示首个通过的标记 */
+/* 移除原有星号标记 */
 .problem-first-to-solve::after {
-    content: '★';
-    position: absolute;
-    top: 2px;
-    right: 2px;
-    font-size: 8px;
-    color: white;
+    content: none;
 }
 
 /* 徽章样式 */
@@ -248,27 +280,25 @@ body {
     font-size: 75%;
     font-weight: bold;
     border-radius: 0.25rem;
-    text-align: center;
 }
 
 .team-badge-vocational {
-    background-color: #6f42c1;
+    background-color: #6c757d;
     color: white;
 }
 
 /* 响应式调整 */
 @media (max-width: 768px) {
     .timer-container {
-        justify-content: flex-start;
-        margin-top: 1rem;
+        flex-direction: column;
+        align-items: flex-end;
     }
     
     .problem-column {
-        min-width: 40px;
-        padding: 0.25rem !important;
+        min-width: 50px;
     }
     
     .problem-cell {
-        padding: 0.25rem !important;
+        padding: 0.25rem 0.2rem !important;
     }
 } 
