@@ -239,176 +239,95 @@
     <script src="/static/js/main.js?v=1.7"></script>
     <script src="/static/js/scoreboard.js?v=1.7"></script>
     <script>
+        // 更新筛选队伍的逻辑
+        function filterTeams(filterType) {
+            // 显示加载状态
+            const scoreboard = document.getElementById('scoreboard-body');
+            if (scoreboard) {
+                scoreboard.innerHTML = `
+                    <tr>
+                        <td colspan="${document.querySelectorAll('#scoreboard-table th').length}" class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">加载中...</span>
+                            </div>
+                            <p class="mt-2">正在加载筛选数据...</p>
+                        </td>
+                    </tr>
+                `;
+            }
+            
+            // 构建请求URL，使用原有API接口，增加filter参数
+            const contestId = contestInfo.id;
+            let apiUrl = `/api/scoreboard/${contestId}`;
+            
+            // 添加筛选参数
+            const urlParams = new URLSearchParams();
+            if (filterType !== 'all') {
+                urlParams.append('filter', filterType);
+            }
+            if (urlParams.toString()) {
+                apiUrl += '?' + urlParams.toString();
+            }
+            
+            // 发送请求到后端
+            fetch(apiUrl)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('网络请求失败');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // 使用API返回的数据更新记分板
+                    if (typeof window.renderScoreboard === 'function') {
+                        window.renderScoreboard(data);
+                    } else {
+                        console.error('renderScoreboard 函数未定义');
+                    }
+                })
+                .catch(error => {
+                    console.error('筛选请求失败:', error);
+                    if (scoreboard) {
+                        scoreboard.innerHTML = `
+                            <tr>
+                                <td colspan="${document.querySelectorAll('#scoreboard-table th').length}" class="text-center py-5">
+                                    <div class="alert alert-danger">
+                                        <i class="bi bi-exclamation-triangle me-2"></i>
+                                        加载失败，请重试
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                });
+        }
+        
         // 修改原始的渲染函数，添加必要的属性
         const originalRenderScoreboard = window.renderScoreboard;
         if (typeof originalRenderScoreboard === 'function') {
             window.renderScoreboard = function(data) {
                 // 调用原始渲染函数
                 const result = originalRenderScoreboard.apply(this, arguments);
-                
-                // 添加额外的属性以支持筛选
-                setTimeout(() => {
-                    const rows = document.querySelectorAll('#scoreboard-body tr');
-                    
-                    // 如果有原始数据，使用原始数据添加属性
-                    if (data && data.results) {
-                        data.results.forEach((result, index) => {
-                            const row = rows[index];
-                            if (!row) return;
-                            
-                            // 添加队伍名称属性
-                            if (result.team && result.team.name) {
-                                row.setAttribute('data-team-name', result.team.name);
-                            }
-                            
-                            // 添加本科/专科属性
-                            if (result.team) {
-                                // 本科属性标记
-                                const hasUndergraduate = result.team.hasOwnProperty('undergraduate') && 
-                                                      result.team.undergraduate !== null && 
-                                                      result.team.undergraduate !== undefined;
-                                row.setAttribute('data-has-undergraduate', hasUndergraduate ? 'true' : 'false');
-                                if (hasUndergraduate) {
-                                    const isUndergraduate = result.team.undergraduate === true ? 'true' : 'false';
-                                    row.setAttribute('data-is-undergraduate', isUndergraduate);
-                                } else {
-                                    row.setAttribute('data-is-undergraduate', 'undefined');
-                                }
-                                
-                                // 专科属性标记
-                                const hasVocational = result.team.hasOwnProperty('vocational') && 
-                                                   result.team.vocational !== null && 
-                                                   result.team.vocational !== undefined;
-                                row.setAttribute('data-has-vocational', hasVocational ? 'true' : 'false');
-                                if (hasVocational) {
-                                    const isVocational = result.team.vocational === true ? 'true' : 'false';
-                                    row.setAttribute('data-is-vocational', isVocational);
-                                } else {
-                                    row.setAttribute('data-is-vocational', 'undefined');
-                                }
-                            } else {
-                                // 如果没有team数据，设置默认值
-                                row.setAttribute('data-has-undergraduate', 'false');
-                                row.setAttribute('data-is-undergraduate', 'undefined');
-                                row.setAttribute('data-has-vocational', 'false');
-                                row.setAttribute('data-is-vocational', 'undefined');
-                            }
-                        });
-                    }
-                    
-                    // 测试代码：输出每行的专业属性
-                    console.log('记分板渲染完成，队伍数：', rows.length);
-                    let undergraduateCount = 0;
-                    let vocationalCount = 0;
-                    let neitherCount = 0;
-                    
-                    rows.forEach(row => {
-                        if (row.getAttribute('data-is-undergraduate') === 'true') {
-                            undergraduateCount++;
-                        } else if (row.getAttribute('data-is-vocational') === 'true') {
-                            vocationalCount++;
-                        } else {
-                            neitherCount++;
-                        }
-                    });
-                    
-                    console.log('本科队伍数：', undergraduateCount);
-                    console.log('专科队伍数：', vocationalCount);
-                    console.log('非本专科队伍数：', neitherCount);
-                }, 100);
-                
                 return result;
             };
         }
         
-        // 更新筛选队伍的逻辑
-        function filterTeams(filterType) {
-            // 获取所有队伍行
-            const rows = document.querySelectorAll('#scoreboard-body tr');
-            
-            // 应用筛选
-            rows.forEach(row => {
-                // 首先移除筛选类
-                row.classList.remove('filtered');
-                
-                if (filterType === 'all') {
-                    // 全部显示
-                    return;
-                }
-                
-                // 检查是否为普通行（不是加载行或特殊行）
-                if (!row.querySelector('td:nth-child(3)')) {
-                    return;
-                }
-                
-                let shouldShow = false;
-                
-                switch (filterType) {
-                    case 'official':
-                        // 检查是否缺少星号标记（正式队伍）
-                        shouldShow = !hasElement(row, '.team-badge-star');
-                        break;
-                    case 'unofficial':
-                        // 检查是否有星号标记（非正式队伍）
-                        shouldShow = hasElement(row, '.team-badge-star');
-                        break;
-                    case 'girls':
-                        // 检查是否有女队标记
-                        shouldShow = hasElement(row, '.girl-team-icon');
-                        break;
-                    case 'undergraduate':
-                        // 本科队伍：undergraduate属性明确为true的才是本科队伍
-                        shouldShow = row.getAttribute('data-is-undergraduate') === 'true';
-                        break;
-                    case 'special':
-                        // 专科队伍：使用vocational属性判断
-                        shouldShow = row.getAttribute('data-is-vocational') === 'true';
-                        break;
-                }
-                
-                // 如果不符合筛选条件，添加过滤类
-                if (!shouldShow) {
-                    row.classList.add('filtered');
-                }
-            });
-            
-            // 更新排名
-            updateRanking();
-        }
-        
-        // 检查元素是否包含指定选择器的子元素
-        function hasElement(element, selector) {
-            return element.querySelector(selector) !== null;
-        }
-        
-        // 更新排名
-        function updateRanking() {
-            let currentRank = 1;
-            
-            // 所有可见的行
-            const visibleRows = Array.from(document.querySelectorAll('#scoreboard-body tr:not(.filtered)'));
-            
-            visibleRows.forEach(row => {
-                const rankCell = row.querySelector('td:first-child');
-                if (rankCell) {
-                    rankCell.textContent = currentRank++;
-                }
-            });
-        }
-        
-        // 设置筛选按钮点击事件
-        document.querySelectorAll('.filter-buttons .btn').forEach(button => {
-            button.addEventListener('click', function() {
-                // 更新按钮状态
-                document.querySelectorAll('.filter-buttons .btn').forEach(btn => {
-                    btn.classList.remove('active');
+        // 页面加载后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 设置筛选按钮点击事件
+            document.querySelectorAll('.filter-buttons .btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    // 更新按钮状态
+                    document.querySelectorAll('.filter-buttons .btn').forEach(btn => {
+                        btn.classList.remove('active');
+                    });
+                    
+                    this.classList.add('active');
+                    
+                    // 获取筛选类型并调用筛选函数
+                    const filterType = this.getAttribute('data-filter');
+                    filterTeams(filterType);
                 });
-                
-                this.classList.add('active');
-                
-                // 应用筛选
-                const filterType = this.getAttribute('data-filter');
-                filterTeams(filterType);
             });
         });
     </script>

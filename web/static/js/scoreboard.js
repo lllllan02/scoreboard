@@ -314,7 +314,7 @@ function loadScoreboardData(selectedTime) {
     // 添加查询参数
     const params = new URLSearchParams();
     if (currentGroup) {
-        params.append('group', currentGroup);
+        params.append('filter', currentGroup);
     }
     if (selectedTime) {
         params.append('time', selectedTime);

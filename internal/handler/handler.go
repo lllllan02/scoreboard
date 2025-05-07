@@ -117,12 +117,24 @@ func ScoreboardHandler(svc *service.ScoreboardService) http.HandlerFunc {
 		contestID := strings.TrimPrefix(r.URL.Path, "/api/scoreboard/")
 		log.Printf("获取比赛ID: %s", contestID)
 
-		// 获取分组过滤参数
-		group := r.URL.Query().Get("group")
-		log.Printf("过滤组别: %s", group)
+		// 收集所有筛选参数
+		filterParams := make(map[string]string)
 
-		// 获取记分板数据和比赛对象（一次性获取，避免重复调用）
-		results, contest, err := svc.GetScoreboard(contestID, group)
+		// 获取筛选参数，兼容两种形式
+		// 第一种：直接使用filter参数
+		if filter := r.URL.Query().Get("filter"); filter != "" {
+			filterParams["filter"] = filter
+			log.Printf("使用filter参数: %s", filter)
+		}
+
+		// 第二种：使用旧版的group参数（向后兼容）
+		if group := r.URL.Query().Get("group"); group != "" {
+			filterParams["group"] = group
+			log.Printf("使用group参数: %s", group)
+		}
+
+		// 使用统一的筛选方法获取数据
+		results, contest, err := svc.GetScoreboardWithFilter(contestID, filterParams)
 		if err != nil {
 			log.Printf("获取记分板数据失败: %v", err)
 			if strings.Contains(err.Error(), "not found") {
@@ -133,9 +145,9 @@ func ScoreboardHandler(svc *service.ScoreboardService) http.HandlerFunc {
 			return
 		}
 
-		log.Printf("获取到 %d 条结果记录", len(results))
+		log.Printf("获取到结果记录，共 %d 条", len(results))
 
-		// 直接返回完整的contest对象和结果
+		// 返回完整的contest对象和结果
 		response := map[string]interface{}{
 			"contest": contest,
 			"results": results,

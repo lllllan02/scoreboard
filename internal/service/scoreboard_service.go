@@ -76,25 +76,174 @@ func (s *ScoreboardService) GetContest(contestID string) (*model.Contest, error)
 	return contest, nil
 }
 
-// GetScoreboard 获取比赛记分板
-func (s *ScoreboardService) GetScoreboard(contestID, group string) ([]*model.Result, *model.Contest, error) {
+// GetScoreboardWithFilter 统一处理所有筛选参数获取记分板数据
+func (s *ScoreboardService) GetScoreboardWithFilter(contestID string, filterParams map[string]string) ([]*model.Result, *model.Contest, error) {
+	// 获取比赛信息
 	contest, err := s.GetContest(contestID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	var results []*model.Result
-	if group == "" {
-		results, err = contest.GetVisibleResults()
-	} else {
-		results, err = contest.GetFilteredResults(group)
-	}
-
+	// 首先获取所有可见结果
+	allResults, err := contest.GetVisibleResults()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get results: %w", err)
 	}
 
-	return results, contest, nil
+	// 获取筛选条件，优先使用filter参数
+	filter := filterParams["filter"]
+
+	// 如果没有filter参数，则检查是否有group参数（向后兼容）
+	if filter == "" {
+		filter = filterParams["group"]
+	}
+
+	// 如果没有筛选条件或筛选条件为"all"，直接返回所有结果
+	if filter == "" || filter == "all" {
+		return allResults, contest, nil
+	}
+
+	// 根据筛选条件过滤结果
+	var filteredResults []*model.Result
+	for _, result := range allResults {
+		switch filter {
+		case "official": // 正式队伍
+			isOfficial := true
+			for _, group := range result.Team.Groups {
+				if group == "unofficial" {
+					isOfficial = false
+					break
+				}
+			}
+			if isOfficial {
+				filteredResults = append(filteredResults, result)
+			}
+		case "unofficial": // 打星队伍
+			for _, group := range result.Team.Groups {
+				if group == "unofficial" {
+					filteredResults = append(filteredResults, result)
+					break
+				}
+			}
+		case "girls": // 女队
+			if result.Team.IsGirl {
+				filteredResults = append(filteredResults, result)
+			}
+		case "undergraduate": // 本科组
+			if result.Team.IsUndergraduate {
+				filteredResults = append(filteredResults, result)
+			}
+		case "special": // 专科组
+			if result.Team.IsVocational {
+				filteredResults = append(filteredResults, result)
+			}
+		default:
+			// 其他自定义筛选条件（按组别筛选）
+			for _, group := range result.Team.Groups {
+				if group == filter {
+					filteredResults = append(filteredResults, result)
+					break
+				}
+			}
+		}
+	}
+
+	// 重新计算筛选后的排名
+	recalculateRanking(filteredResults)
+
+	return filteredResults, contest, nil
+}
+
+// recalculateRanking 重新计算筛选后的排名、学校排名和首A
+func recalculateRanking(results []*model.Result) {
+	// 1. 排名计算
+	// 按解题数和罚时排序
+	sort.Slice(results, func(i, j int) bool {
+		// 首先按解题数量排序（降序）
+		if results[i].Score != results[j].Score {
+			return results[i].Score > results[j].Score
+		}
+		// 如果解题数量相同，按罚时排序（升序）
+		return results[i].TotalTime < results[j].TotalTime
+	})
+
+	// 设置队伍排名，处理并列排名
+	for i, result := range results {
+		result.Rank = i + 1
+		if i > 0 {
+			prev := results[i-1]
+			if prev.Score == result.Score && prev.TotalTime == result.TotalTime {
+				result.Rank = prev.Rank
+			}
+		}
+	}
+
+	// 2. 学校排名计算
+	schoolRankMap := make(map[string]int)  // 学校名称 -> 排名
+	schoolsRanked := make(map[string]bool) // 已经排名的学校
+
+	for _, result := range results {
+		school := result.Team.Organization
+		if school == "" || schoolsRanked[school] {
+			continue // 跳过没有学校信息或已经处理过的学校
+		}
+
+		// 为新学校分配排名（按照队伍出现顺序，即排名顺序）
+		schoolRankMap[school] = len(schoolRankMap) + 1
+		schoolsRanked[school] = true
+	}
+
+	// 更新每个队伍的学校排名
+	for _, result := range results {
+		school := result.Team.Organization
+		if rank, exists := schoolRankMap[school]; exists {
+			result.SchoolRank = rank
+		}
+	}
+
+	// 3. 首A计算
+	// 记录每个题目的最早解出时间和对应队伍
+	firstSolveMap := make(map[string]struct {
+		TeamID    string
+		SolveTime int64
+	})
+
+	// 第一遍遍历，找出每道题目的最早解出时间
+	for _, result := range results {
+		for problemID, problem := range result.ProblemResults {
+			if problem.Solved {
+				// 如果是首次记录该题，或解题时间早于之前记录
+				if firstSolve, exists := firstSolveMap[problemID]; !exists || problem.SolvedTime < firstSolve.SolveTime {
+					firstSolveMap[problemID] = struct {
+						TeamID    string
+						SolveTime int64
+					}{
+						TeamID:    result.Team.ID,
+						SolveTime: problem.SolvedTime,
+					}
+				}
+			}
+		}
+	}
+
+	// 第二遍遍历，标记首A
+	for _, result := range results {
+		for problemID, problem := range result.ProblemResults {
+			if problem.Solved {
+				// 重置首A标记
+				problem.FirstToSolve = false
+
+				// 检查是否是当前题目的首A
+				if firstSolve, exists := firstSolveMap[problemID]; exists &&
+					result.Team.ID == firstSolve.TeamID &&
+					problem.SolvedTime == firstSolve.SolveTime {
+					problem.FirstToSolve = true
+				}
+
+				result.ProblemResults[problemID] = problem
+			}
+		}
+	}
 }
 
 // GetContestGroups 获取比赛的所有分组
