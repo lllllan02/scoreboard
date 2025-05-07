@@ -1,7 +1,6 @@
 /**
  * 记分板功能
  */
-console.log('记分板脚本加载成功 - 版本2 - 队名和学校分离');
 
 // 当前选择的组别
 let currentGroup = '';
@@ -17,24 +16,7 @@ let timerInterval = null;
 
 // 初始化页面
 document.addEventListener('DOMContentLoaded', function() {
-    // 添加五角星样式
-    const style = document.createElement('style');
-    style.textContent = `
-        .team-badge-star {
-            display: inline-block;
-            margin-left: 5px;
-            font-size: 0.9em;
-            color: gold;
-            text-shadow: 0 0 1px #000;
-            animation: star-pulse 1.5s infinite alternate;
-        }
-        
-        @keyframes star-pulse {
-            from { opacity: 0.7; }
-            to { opacity: 1; transform: scale(1.2); }
-        }
-    `;
-    document.head.appendChild(style);
+    // 移除样式代码 - 现已移至main.css文件中
     
     // 启动计时器（会立即调用updateTimeDisplay更新比赛状态）
     startTimer();
@@ -211,26 +193,27 @@ function renderScoreboard(data) {
         const teamName = document.createElement('div');
         teamName.textContent = result.team.name;
         
-        // 添加队伍标签
-        if (result.team.undergraduate) {
-            const badge = document.createElement('span');
-            badge.className = 'team-badge team-badge-undergrad';
-            badge.textContent = '本科';
-            teamName.appendChild(badge);
-        }
+        // if (result.team.undergraduate) {
+        //     const badge = document.createElement('span');
+        //     badge.className = 'team-badge team-badge-undergrad';
+        //     badge.textContent = '本科';
+        //     teamName.appendChild(badge);
+        // }
         
+
+        // if (result.team.vocational) {
+        //     const badge = document.createElement('span');
+        //     badge.className = 'team-badge team-badge-vocational';
+        //     badge.textContent = '高职';
+        //     teamName.appendChild(badge);
+        // }
+
         if (result.team.girl) {
-            const badge = document.createElement('span');
-            badge.className = 'team-badge team-badge-girl';
-            badge.textContent = '女队';
-            teamName.appendChild(badge);
-        }
-        
-        if (result.team.vocational) {
-            const badge = document.createElement('span');
-            badge.className = 'team-badge team-badge-vocational';
-            badge.textContent = '高职';
-            teamName.appendChild(badge);
+            const girlContainer = document.createElement('span');
+            girlContainer.className = 'girl-team-icon'; 
+            girlContainer.innerHTML = '💃';
+            girlContainer.title = '女队';
+            teamName.appendChild(girlContainer);
         }
         
         // 检查是否为打星队伍（unofficial组）
