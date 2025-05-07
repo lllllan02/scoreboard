@@ -10,10 +10,91 @@
     <link rel="stylesheet" href="/static/css/bootstrap.min.css?v=1.1">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="/static/css/main.css?v=1.9">
+    <style>
+        .filter-buttons {
+            margin-bottom: 8px;
+        }
+        .filter-buttons .btn {
+            font-size: 0.85rem;
+            padding: 4px 10px;
+            border-radius: 4px;
+            margin-right: 6px;
+            margin-bottom: 4px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.2s ease;
+            background-color: white;
+            border-color: #ddd;
+            color: #555;
+        }
+        .filter-buttons .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            background-color: #f8f9fa;
+        }
+        .filter-buttons .btn.active {
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+            transform: translateY(0);
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+            color: white;
+        }
+        .filters-container {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            padding-left: 3px;
+            padding-top: 8px;
+        }
+        .filter-label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-right: 10px;
+            color: #495057;
+            display: flex;
+            align-items: center;
+        }
+        .scoreboard-row {
+            transition: opacity 0.3s ease, height 0.3s ease;
+        }
+        .scoreboard-row.filtered {
+            display: none;
+        }
+        .girl-team-icon {
+            margin-left: 5px;
+            font-size: 0.9em;
+            color: #e83e8c;
+        }
+        .team-badge-star {
+            margin-left: 5px;
+            color: #f39c12;
+            font-size: 0.9em;
+        }
+        #refreshBtn {
+            display: flex;
+            align-items: center;
+            padding: 5px 12px;
+            transition: all 0.2s ease;
+        }
+        #refreshBtn:hover {
+            transform: translateY(-1px);
+        }
+        #refreshBtn i {
+            margin-right: 5px;
+        }
+        .refresh-container {
+            display: flex;
+            justify-content: flex-end;
+        }
+        @media (max-width: 768px) {
+            .filters-container {
+                margin-bottom: 10px;
+            }
+        }
+    </style>
 </head>
 <body>
     <!-- 简化导航栏 -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
         <div class="container-fluid">
             <a class="navbar-brand" href="/"><i class="bi bi-bar-chart-line"></i> Scoreboard</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -84,26 +165,26 @@
             </div>
         </div>
 
+        <!-- 筛选和刷新区域 - 放在排行榜外面，无背景框 -->
+        <div class="row" style="margin-bottom: 8px;">
+            <div class="col-12">
+                <div class="filters-container">
+                    <div class="filter-buttons">
+                        <button type="button" class="btn btn-sm active" data-filter="all">全部</button>
+                        <button type="button" class="btn btn-sm" data-filter="official">正式队伍</button>
+                        <button type="button" class="btn btn-sm" data-filter="unofficial">打星队伍</button>
+                        <button type="button" class="btn btn-sm" data-filter="girls">女队</button>
+                        <button type="button" class="btn btn-sm" data-filter="undergraduate">本科组</button>
+                        <button type="button" class="btn btn-sm" data-filter="special">专科组</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row mb-3">
             <div class="col-12">
-                <!-- 添加简洁的控制区域 -->
-                <div class="d-flex justify-content-end mb-2">
-                    <div class="btn-group me-2">
-                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" id="groupDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                            筛选组别
-                        </button>
-                        <ul class="dropdown-menu" aria-labelledby="groupDropdown">
-                            <li><a class="dropdown-item active" href="#" data-group="">全部</a></li>
-                            {{ range $id, $name := .Groups }}
-                            <li><a class="dropdown-item" href="#" data-group="{{ $id }}">{{ $name }}</a></li>
-                            {{ end }}
-                        </ul>
-                    </div>
-                    <button class="btn btn-sm btn-outline-secondary" id="refreshBtn">刷新</button>
-                </div>
-                
-                <div class="card">
-                    <div class="card-body p-0">
+                <div class="card shadow-sm">
+                    <div class="card-body">
                         <div class="table-responsive">
                             <table class="table table-hover mb-0" id="scoreboard-table">
                                 <thead>
@@ -157,5 +238,179 @@
     <script src="/static/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/main.js?v=1.7"></script>
     <script src="/static/js/scoreboard.js?v=1.7"></script>
+    <script>
+        // 修改原始的渲染函数，添加必要的属性
+        const originalRenderScoreboard = window.renderScoreboard;
+        if (typeof originalRenderScoreboard === 'function') {
+            window.renderScoreboard = function(data) {
+                // 调用原始渲染函数
+                const result = originalRenderScoreboard.apply(this, arguments);
+                
+                // 添加额外的属性以支持筛选
+                setTimeout(() => {
+                    const rows = document.querySelectorAll('#scoreboard-body tr');
+                    
+                    // 如果有原始数据，使用原始数据添加属性
+                    if (data && data.results) {
+                        data.results.forEach((result, index) => {
+                            const row = rows[index];
+                            if (!row) return;
+                            
+                            // 添加队伍名称属性
+                            if (result.team && result.team.name) {
+                                row.setAttribute('data-team-name', result.team.name);
+                            }
+                            
+                            // 添加本科/专科属性
+                            if (result.team) {
+                                // 本科属性标记
+                                const hasUndergraduate = result.team.hasOwnProperty('undergraduate') && 
+                                                      result.team.undergraduate !== null && 
+                                                      result.team.undergraduate !== undefined;
+                                row.setAttribute('data-has-undergraduate', hasUndergraduate ? 'true' : 'false');
+                                if (hasUndergraduate) {
+                                    const isUndergraduate = result.team.undergraduate === true ? 'true' : 'false';
+                                    row.setAttribute('data-is-undergraduate', isUndergraduate);
+                                } else {
+                                    row.setAttribute('data-is-undergraduate', 'undefined');
+                                }
+                                
+                                // 专科属性标记
+                                const hasVocational = result.team.hasOwnProperty('vocational') && 
+                                                   result.team.vocational !== null && 
+                                                   result.team.vocational !== undefined;
+                                row.setAttribute('data-has-vocational', hasVocational ? 'true' : 'false');
+                                if (hasVocational) {
+                                    const isVocational = result.team.vocational === true ? 'true' : 'false';
+                                    row.setAttribute('data-is-vocational', isVocational);
+                                } else {
+                                    row.setAttribute('data-is-vocational', 'undefined');
+                                }
+                            } else {
+                                // 如果没有team数据，设置默认值
+                                row.setAttribute('data-has-undergraduate', 'false');
+                                row.setAttribute('data-is-undergraduate', 'undefined');
+                                row.setAttribute('data-has-vocational', 'false');
+                                row.setAttribute('data-is-vocational', 'undefined');
+                            }
+                        });
+                    }
+                    
+                    // 测试代码：输出每行的专业属性
+                    console.log('记分板渲染完成，队伍数：', rows.length);
+                    let undergraduateCount = 0;
+                    let vocationalCount = 0;
+                    let neitherCount = 0;
+                    
+                    rows.forEach(row => {
+                        if (row.getAttribute('data-is-undergraduate') === 'true') {
+                            undergraduateCount++;
+                        } else if (row.getAttribute('data-is-vocational') === 'true') {
+                            vocationalCount++;
+                        } else {
+                            neitherCount++;
+                        }
+                    });
+                    
+                    console.log('本科队伍数：', undergraduateCount);
+                    console.log('专科队伍数：', vocationalCount);
+                    console.log('非本专科队伍数：', neitherCount);
+                }, 100);
+                
+                return result;
+            };
+        }
+        
+        // 更新筛选队伍的逻辑
+        function filterTeams(filterType) {
+            // 获取所有队伍行
+            const rows = document.querySelectorAll('#scoreboard-body tr');
+            
+            // 应用筛选
+            rows.forEach(row => {
+                // 首先移除筛选类
+                row.classList.remove('filtered');
+                
+                if (filterType === 'all') {
+                    // 全部显示
+                    return;
+                }
+                
+                // 检查是否为普通行（不是加载行或特殊行）
+                if (!row.querySelector('td:nth-child(3)')) {
+                    return;
+                }
+                
+                let shouldShow = false;
+                
+                switch (filterType) {
+                    case 'official':
+                        // 检查是否缺少星号标记（正式队伍）
+                        shouldShow = !hasElement(row, '.team-badge-star');
+                        break;
+                    case 'unofficial':
+                        // 检查是否有星号标记（非正式队伍）
+                        shouldShow = hasElement(row, '.team-badge-star');
+                        break;
+                    case 'girls':
+                        // 检查是否有女队标记
+                        shouldShow = hasElement(row, '.girl-team-icon');
+                        break;
+                    case 'undergraduate':
+                        // 本科队伍：undergraduate属性明确为true的才是本科队伍
+                        shouldShow = row.getAttribute('data-is-undergraduate') === 'true';
+                        break;
+                    case 'special':
+                        // 专科队伍：使用vocational属性判断
+                        shouldShow = row.getAttribute('data-is-vocational') === 'true';
+                        break;
+                }
+                
+                // 如果不符合筛选条件，添加过滤类
+                if (!shouldShow) {
+                    row.classList.add('filtered');
+                }
+            });
+            
+            // 更新排名
+            updateRanking();
+        }
+        
+        // 检查元素是否包含指定选择器的子元素
+        function hasElement(element, selector) {
+            return element.querySelector(selector) !== null;
+        }
+        
+        // 更新排名
+        function updateRanking() {
+            let currentRank = 1;
+            
+            // 所有可见的行
+            const visibleRows = Array.from(document.querySelectorAll('#scoreboard-body tr:not(.filtered)'));
+            
+            visibleRows.forEach(row => {
+                const rankCell = row.querySelector('td:first-child');
+                if (rankCell) {
+                    rankCell.textContent = currentRank++;
+                }
+            });
+        }
+        
+        // 设置筛选按钮点击事件
+        document.querySelectorAll('.filter-buttons .btn').forEach(button => {
+            button.addEventListener('click', function() {
+                // 更新按钮状态
+                document.querySelectorAll('.filter-buttons .btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                
+                this.classList.add('active');
+                
+                // 应用筛选
+                const filterType = this.getAttribute('data-filter');
+                filterTeams(filterType);
+            });
+        });
+    </script>
 </body>
 </html> 

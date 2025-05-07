@@ -22,9 +22,9 @@
         }
         .contest-card {
             border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             margin-bottom: 20px;
-            transition: transform 0.2s;
+            transition: all 0.2s;
             background-color: white;
             position: relative;
             overflow: hidden;
@@ -33,8 +33,8 @@
             margin-right: auto;
         }
         .contest-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.12);
         }
         .contest-title {
             font-weight: 600;
@@ -102,11 +102,27 @@
             font-size: 0.9rem;
             font-weight: 600;
         }
+        .search-box-container {
+            position: relative;
+            margin-bottom: 25px;
+        }
         .search-box {
             border-radius: 50px;
-            padding: 10px 20px;
+            padding: 12px 20px 12px 45px;
             border: 1px solid #ddd;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+        }
+        .search-box:focus {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-color: #0d6efd;
+        }
+        .search-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
         }
         .nav-arrow {
             display: inline-block;
@@ -130,6 +146,21 @@
             border-radius: 4px;
             margin-left: 10px;
         }
+        .contest-cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        @media (min-width: 768px) {
+            .contest-cards-container {
+                grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            }
+        }
+        .no-results {
+            text-align: center;
+            padding: 40px 0;
+            color: #6c757d;
+        }
     </style>
 </head>
 <body>
@@ -151,45 +182,49 @@
             <!-- 搜索栏 -->
             <div class="row mb-4">
                 <div class="col-md-8 mx-auto">
-                    <input type="text" class="form-control search-box" placeholder="Search...">
+                    <div class="search-box-container">
+                        <i class="bi bi-search search-icon"></i>
+                        <input type="text" class="form-control search-box" id="contest-search" placeholder="搜索比赛...">
+                    </div>
                 </div>
             </div>
             
-            <!-- 比赛列表 -->
-            <div class="contest-list">
+            <!-- 比赛列表 - 改为卡片网格布局 -->
+            <div class="contest-cards-container">
                 {{ range .Contests }}
                 <div class="contest-card p-3" data-contest-id="{{ .ID }}">
-                    <div class="row g-3">
-                        <div class="col-md-8">
-                            <h3 class="contest-title m-0">{{ .Name }}</h3>
-                            <div class="contest-time">
-                                <div class="contest-time-row">
-                                    <div class="contest-time-item">
-                                        <span class="contest-time-icon"><i class="bi bi-clock"></i></span>
-                                        <span>开始: {{ .StartTime.Format "2006-01-02 15:04" }}</span>
-                                    </div>
-                                    <div class="contest-time-item">
-                                        <span class="contest-time-icon"><i class="bi bi-flag-fill"></i></span>
-                                        <span>结束: {{ .EndTime.Format "2006-01-02 15:04" }}</span>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="contest-type">{{ .Type }}</span>
+                            {{ $now := now }}
+                            {{ if .StartTime.After $now }}
+                                <span class="status-badge bg-warning text-dark">未开始</span>
+                            {{ else if .EndTime.After $now }}
+                                <span class="status-badge bg-success text-white">进行中</span>
+                            {{ else }}
+                                <span class="status-badge bg-secondary text-white">已结束</span>
+                            {{ end }}
                         </div>
-                        <div class="col-md-4">
-                            <div class="contest-meta">
-                                <span class="contest-type">{{ .Type }}</span>
-                                {{ $now := now }}
-                                {{ if .StartTime.After $now }}
-                                    <span class="status-badge bg-warning text-dark">未开始</span>
-                                {{ else if .EndTime.After $now }}
-                                    <span class="status-badge bg-success text-white">进行中</span>
-                                {{ else }}
-                                    <span class="status-badge bg-secondary text-white">已结束</span>
-                                {{ end }}
-                                <a href="/contest/{{ .ID }}" class="nav-arrow ms-3"><i class="bi bi-arrow-right"></i></a>
+                        <h3 class="contest-title">{{ .Name }}</h3>
+                    </div>
+                    
+                    <div class="contest-time mb-3">
+                        <div class="contest-time-row">
+                            <div class="contest-time-item">
+                                <span class="contest-time-icon"><i class="bi bi-clock"></i></span>
+                                <span>开始: {{ .StartTime.Format "2006-01-02 15:04" }}</span>
+                            </div>
+                            <div class="contest-time-item">
+                                <span class="contest-time-icon"><i class="bi bi-flag-fill"></i></span>
+                                <span>结束: {{ .EndTime.Format "2006-01-02 15:04" }}</span>
                             </div>
                         </div>
                     </div>
+                    
+                    <div class="d-flex justify-content-end">
+                        <a href="/contest/{{ .ID }}" class="nav-arrow"><i class="bi bi-arrow-right"></i></a>
+                    </div>
+                    
                     {{ $now := now }}
                     {{ if and (.StartTime.Before $now) (.EndTime.After $now) }}
                         <div class="progress">
@@ -203,19 +238,46 @@
                 </div>
                 {{ end }}
             </div>
+            
+            <!-- 无搜索结果提示 -->
+            <div class="no-results d-none">
+                <i class="bi bi-search mb-3" style="font-size: 2rem;"></i>
+                <h4>未找到匹配的比赛</h4>
+                <p>请尝试其他搜索关键词</p>
+            </div>
         </div>
     </div>
 
     <script src="/static/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/main.js?v=1.7"></script>
     <script>
-        // 简单搜索功能
-        document.querySelector('.search-box').addEventListener('input', function(e) {
+        // 增强的搜索功能
+        document.querySelector('#contest-search').addEventListener('input', function(e) {
             const query = e.target.value.toLowerCase();
-            document.querySelectorAll('.contest-card').forEach(card => {
+            const cards = document.querySelectorAll('.contest-card');
+            let hasResults = false;
+            
+            cards.forEach(card => {
                 const title = card.querySelector('.contest-title').textContent.toLowerCase();
-                card.style.display = title.includes(query) ? 'block' : 'none';
+                const type = card.querySelector('.contest-type').textContent.toLowerCase();
+                const timeInfo = card.querySelector('.contest-time').textContent.toLowerCase();
+                
+                // 搜索标题、类型和时间信息
+                if (title.includes(query) || type.includes(query) || timeInfo.includes(query)) {
+                    card.style.display = '';
+                    hasResults = true;
+                } else {
+                    card.style.display = 'none';
+                }
             });
+            
+            // 显示或隐藏"无结果"提示
+            const noResults = document.querySelector('.no-results');
+            if (hasResults) {
+                noResults.classList.add('d-none');
+            } else {
+                noResults.classList.remove('d-none');
+            }
         });
 
         // 计算比赛进度
