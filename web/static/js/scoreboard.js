@@ -1343,19 +1343,18 @@ function loadStatisticsData(apiUrl, filter, container) {
         });
 }
 
-// 生成卡片式热力图（图二样式）
-function generateCardHeatmap(problemStats) {
-    if (!problemStats || Object.keys(problemStats).length === 0) {
-        console.warn('没有可用的题目统计数据');
-        return '<div class="alert alert-warning">没有可用的题目统计数据</div>';
+// 生成题目热力图（使用优化后的数据格式）
+function generateProblemHeatmap(problemHeatmap, timeLabels) {
+    if (!problemHeatmap || Object.keys(problemHeatmap).length === 0) {
+        return '<div class="alert alert-warning">没有可用的题目热力图数据</div>';
     }
 
     try {
         // 创建热力图容器
-        let heatmapHtml = '<div class="card-heatmap-container">';
+        let html = '<div class="problem-heatmap-container">';
         
         // 按题目ID排序
-        const sortedProblemIds = Object.keys(problemStats).sort();
+        const sortedProblemIds = Object.keys(problemHeatmap).sort();
         
         // 获取气球颜色配置（如果存在）和题目ID列表
         let balloonColors = [];
@@ -1364,9 +1363,6 @@ function generateCardHeatmap(problemStats) {
         if (scoreboardData && scoreboardData.contest) {
             balloonColors = scoreboardData.contest.balloon_color || [];
             problemIds = scoreboardData.contest.problem_id || [];
-            console.log('热力图使用气球颜色:', balloonColors);
-        } else {
-            console.warn('无法获取气球颜色信息，将使用默认颜色');
         }
         
         // 创建题目ID到气球颜色的映射
@@ -1379,18 +1375,23 @@ function generateCardHeatmap(problemStats) {
             });
         }
         
-        // 为每个题目生成卡片式热力图
+        // 为每个题目生成热力图
         sortedProblemIds.forEach(problemId => {
             try {
-                const stats = problemStats[problemId];
+                const problemData = problemHeatmap[problemId];
+                if (!problemData) return;
                 
-                // 计算提交数据
-                const acceptedCount = stats.accepted || 0;
-                const rejectedCount = stats.rejected || 0;
-                const pendingCount = stats.pending || 0;
-                const totalSubmissions = acceptedCount + rejectedCount + pendingCount;
+                // 获取通过和拒绝数据
+                const acceptedData = problemData.accepted || [];
+                const rejectedData = problemData.rejected || [];
                 
-                if (totalSubmissions === 0) return; // 跳过无提交的题目
+                // 计算最大值，用于归一化显示
+                const maxValue = Math.max(
+                    ...acceptedData.map(v => v || 0),
+                    ...rejectedData.map(v => v || 0)
+                );
+                
+                if (maxValue === 0) return; // 如果没有数据，跳过
                 
                 // 设置背景颜色，默认为绿色
                 let backgroundColor = '#4CAF50';
@@ -1403,93 +1404,151 @@ function generateCardHeatmap(problemStats) {
                 // 使用灰度级别公式判断文字颜色
                 const textColor = getContrastColor(backgroundColor);
                 
-                // 生成点阵热力图
-                // 分别为AC和非AC创建20个格子的点阵图
-                // 计算每种状态的点的数量，最多显示20个
-                const maxDotsCount = 20; 
-                const dotsPerRow = 10; // 每行10个点
-                
-                // 计算每种状态最多显示多少个点
-                const acceptedDotsCount = Math.min(acceptedCount, maxDotsCount);
-                const rejectedDotsCount = Math.min(rejectedCount, maxDotsCount);
-                
-                // 生成接受的点 - 按照每行10个的方式排列
-                let acceptedDots = '';
-                for (let i = 0; i < maxDotsCount; i++) {
-                    // 每10个点添加一个换行
-                    if (i > 0 && i % dotsPerRow === 0) {
-                        acceptedDots += '</div><div class="dots-subrow">';
+                // 找出主要提交时间段（根据通过提交最多的时间段）
+                let peakTimeIndex = 0;
+                let peakSubmissions = 0;
+                acceptedData.forEach((count, index) => {
+                    if (count > peakSubmissions) {
+                        peakSubmissions = count;
+                        peakTimeIndex = index;
                     }
-                    
-                    // 如果是第一个点，添加行开始标签
-                    if (i === 0) {
-                        acceptedDots += '<div class="dots-subrow">';
-                    }
-                    
-                    if (i < acceptedDotsCount) {
-                        acceptedDots += '<span class="dot accepted"></span>';
+                });
+                
+                // 转换为小时:分钟格式
+                const peakTimeMinutes = peakTimeIndex * 5;
+                const peakHours = Math.floor(peakTimeMinutes / 60);
+                const peakMinutes = peakTimeMinutes % 60;
+                const peakTimeFormatted = `${peakHours}:${peakMinutes.toString().padStart(2, '0')}`;
+                
+                // 计算时间轴的标记点
+                let timeMarkPoints = [];
+                if (timeLabels && timeLabels.length > 0) {
+                    // 在较长的时间轴上添加更多的时间点
+                    if (timeLabels.length > 60) {
+                        // 添加开始、1/4、中间、3/4、结束时间点
+                        timeMarkPoints.push(0);
+                        timeMarkPoints.push(Math.floor(timeLabels.length / 4));
+                        timeMarkPoints.push(Math.floor(timeLabels.length / 2));
+                        timeMarkPoints.push(Math.floor(timeLabels.length * 3 / 4));
+                        timeMarkPoints.push(timeLabels.length - 1);
                     } else {
-                        acceptedDots += '<span class="dot placeholder"></span>';
-                    }
-                    
-                    // 如果是最后一个点，添加行结束标签
-                    if (i === maxDotsCount - 1) {
-                        acceptedDots += '</div>';
+                        // 添加开始、中间和结束时间点
+                        timeMarkPoints.push(0);
+                        if (timeLabels.length > 2) {
+                            timeMarkPoints.push(Math.floor(timeLabels.length / 2));
+                        }
+                        timeMarkPoints.push(timeLabels.length - 1);
                     }
                 }
                 
-                // 生成拒绝的点 - 按照每行10个的方式排列
-                let rejectedDots = '';
-                for (let i = 0; i < maxDotsCount; i++) {
-                    // 每10个点添加一个换行
-                    if (i > 0 && i % dotsPerRow === 0) {
-                        rejectedDots += '</div><div class="dots-subrow">';
-                    }
-                    
-                    // 如果是第一个点，添加行开始标签
-                    if (i === 0) {
-                        rejectedDots += '<div class="dots-subrow">';
-                    }
-                    
-                    if (i < rejectedDotsCount) {
-                        rejectedDots += '<span class="dot rejected"></span>';
-                    } else {
-                        rejectedDots += '<span class="dot placeholder"></span>';
-                    }
-                    
-                    // 如果是最后一个点，添加行结束标签
-                    if (i === maxDotsCount - 1) {
-                        rejectedDots += '</div>';
-                    }
-                }
-                
-                // 创建题目卡片 - 点阵热力图样式
-                heatmapHtml += `
-                    <div class="problem-card">
-                        <div class="problem-badge" style="background-color: ${backgroundColor}; color: ${textColor};">${problemId}</div>
+                // 创建时间轴标记
+                let timeAxisHtml = '<div class="time-axis">';
+                timeMarkPoints.forEach(point => {
+                    if (timeLabels[point]) {
+                        // 转换分钟数为小时:分钟格式
+                        const minutes = parseInt(timeLabels[point]);
+                        const hours = Math.floor(minutes / 60);
+                        const mins = minutes % 60;
+                        const timeFormatted = `${hours}:${mins.toString().padStart(2, '0')}`;
                         
-                        <div class="dots-container">
-                            <div class="dots-row accepted-row">
-                                ${acceptedDots}
+                        const percent = (point / (timeLabels.length - 1)) * 100;
+                        timeAxisHtml += `<span class="time-mark" style="left: ${percent}%;" title="比赛开始后 ${minutes} 分钟">${timeFormatted}</span>`;
+                    }
+                });
+                timeAxisHtml += '</div>';
+                
+                // 生成热力图条形图
+                let acceptedGraphHtml = '<div class="heat-graph accepted-graph">';
+                
+                // 记录最活跃的时间段（高亮显示）
+                let maxAcceptedCount = Math.max(...acceptedData);
+                let maxRejectedCount = Math.max(...rejectedData);
+                
+                acceptedData.forEach((count, index) => {
+                    const minutes = index * 5;
+                    const hours = Math.floor(minutes / 60);
+                    const mins = minutes % 60;
+                    const timeFormatted = `${hours}:${mins.toString().padStart(2, '0')}`;
+                    
+                    let intensity = count > 0 ? Math.min(100, Math.max(20, (count / maxValue) * 100)) : 0;
+                    
+                    // 高亮显示最活跃时间段的热力点
+                    const isHotspot = count === maxAcceptedCount && count > 0;
+                    const hotspotClass = isHotspot ? 'hotspot' : '';
+                    
+                    acceptedGraphHtml += `<div class="heat-bar accepted ${hotspotClass}" 
+                                              style="opacity: ${intensity/100};" 
+                                              title="${count} 次通过提交 (比赛时间 ${timeFormatted})"></div>`;
+                });
+                acceptedGraphHtml += '</div>';
+                
+                // 创建拒绝提交热力图
+                let rejectedGraphHtml = '<div class="heat-graph rejected-graph">';
+                rejectedData.forEach((count, index) => {
+                    const minutes = index * 5;
+                    const hours = Math.floor(minutes / 60);
+                    const mins = minutes % 60;
+                    const timeFormatted = `${hours}:${mins.toString().padStart(2, '0')}`;
+                    
+                    let intensity = count > 0 ? Math.min(100, Math.max(20, (count / maxValue) * 100)) : 0;
+                    
+                    // 高亮显示最活跃时间段的热力点
+                    const isHotspot = count === maxRejectedCount && count > 0;
+                    const hotspotClass = isHotspot ? 'hotspot' : '';
+                    
+                    rejectedGraphHtml += `<div class="heat-bar rejected ${hotspotClass}" 
+                                              style="opacity: ${intensity/100};" 
+                                              title="${count} 次拒绝提交 (比赛时间 ${timeFormatted})"></div>`;
+                });
+                rejectedGraphHtml += '</div>';
+                
+                // 生成题目统计数据
+                const totalAccepted = acceptedData.reduce((sum, val) => sum + (val || 0), 0);
+                const totalRejected = rejectedData.reduce((sum, val) => sum + (val || 0), 0);
+                const totalSubmissions = totalAccepted + totalRejected;
+                const acceptRate = totalSubmissions > 0 ? ((totalAccepted / totalSubmissions) * 100).toFixed(1) : 0;
+                
+                // 创建题目卡片
+                html += `
+                    <div class="problem-heatmap-card">
+                        <div class="problem-heatmap-header" style="background-color: ${backgroundColor}; color: ${textColor};">
+                            <span class="problem-label">${problemId}</span>
+                            <span class="problem-stats">${acceptRate}% 通过率</span>
+                        </div>
+                        <div class="problem-heatmap-body">
+                            <div class="heatmap-graphs">
+                                ${acceptedGraphHtml}
+                                ${rejectedGraphHtml}
                             </div>
-                            <div class="dots-row rejected-row">
-                                ${rejectedDots}
+                            ${timeAxisHtml}
+                            <div class="submission-stats">
+                                <div class="stat-item">
+                                    <span class="stat-label">通过:</span>
+                                    <span class="stat-value accepted">${totalAccepted}</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">拒绝:</span>
+                                    <span class="stat-value rejected">${totalRejected}</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">高峰:</span>
+                                    <span class="stat-value">${peakTimeFormatted}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 `;
-            } catch (problemError) {
-                console.error(`处理题目 ${problemId} 时出错:`, problemError);
-                // 继续处理下一个题目
+            } catch (error) {
+                console.error(`生成题目 ${problemId} 热力图时出错:`, error);
             }
         });
         
         // 关闭容器
-        heatmapHtml += '</div>';
-        return heatmapHtml;
+        html += '</div>';
+        return html;
     } catch (error) {
-        console.error('生成热力图时发生错误:', error);
-        return '<div class="alert alert-danger">生成热力图时发生错误: ' + error.message + '</div>';
+        console.error('生成题目热力图时出错:', error);
+        return '<div class="alert alert-danger">生成题目热力图时出错: ' + error.message + '</div>';
     }
 }
 
@@ -1605,15 +1664,15 @@ function displayStatistics(data, filter, container) {
             </div>
         </div>
         
-        <!-- 题目提交情况 -->
+        <!-- 题目热力图 -->
         <div class="mb-4">
-            <h5 class="heatmap-title">提交热力图</h5>
+            <h5 class="heatmap-title">题目热力图</h5>
             <div class="d-flex justify-content-center mb-2" style="font-size: 0.85rem; color: #666;">
                 <div class="me-3"><span style="display: inline-block; width: 8px; height: 8px; background-color: #28a745; margin-right: 5px;"></span>通过</div>
                 <div><span style="display: inline-block; width: 8px; height: 8px; background-color: #dc3545; margin-right: 5px;"></span>拒绝</div>
             </div>
             <div class="problem-heatmap">
-                ${generateCardHeatmap(data.problem_stats)}
+                ${data.problem_heatmap ? generateProblemHeatmap(data.problem_heatmap, data.time_labels) : generateCardHeatmap(data.problem_stats)}
             </div>
         </div>
         
@@ -1791,15 +1850,16 @@ window.internalDisplayStatistics = function(data, filter, container) {
             </div>
         </div>
         
-        <!-- 题目提交情况 -->
+        <!-- 题目热力图 -->
         <div class="mb-4">
-            <h5 class="heatmap-title">提交热力图</h5>
+            <h5 class="heatmap-title">题目热力图</h5>
             <div class="d-flex justify-content-center mb-2" style="font-size: 0.85rem; color: #666;">
                 <div class="me-3"><span style="display: inline-block; width: 8px; height: 8px; background-color: #28a745; margin-right: 5px;"></span>通过</div>
                 <div><span style="display: inline-block; width: 8px; height: 8px; background-color: #dc3545; margin-right: 5px;"></span>拒绝</div>
             </div>
             <div class="problem-heatmap">
-                ${generateCardHeatmap(data.problem_stats)}
+                ${data.problem_heatmap ? generateProblemHeatmap(data.problem_heatmap, data.time_labels) : 
+                  '<div class="alert alert-warning">没有热力图数据</div>'}
             </div>
         </div>
         
@@ -2090,4 +2150,19 @@ function showNotification(message, type = 'info') {
             document.body.removeChild(notification);
         }, 150);
     }, 3000);
-} 
+}
+
+// 获取队伍颜色
+function getTeamColor(teamGroup) {
+    // 队伍组别颜色映射
+    const colorMap = {
+        'default': '#6c757d',   // 灰色
+        'undergraduate': '#0d6efd', // 蓝色
+        'girls': '#d63384',     // 粉色
+        'vocational': '#fd7e14', // 橙色
+        'unofficial': '#6c757d', // 灰色
+        'official': '#198754'   // 绿色
+    };
+    
+    return colorMap[teamGroup] || '#6c757d'; // 默认灰色
+}

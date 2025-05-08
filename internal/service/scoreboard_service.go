@@ -264,6 +264,8 @@ type ContestStatistics struct {
 	ProblemStats    map[string]ProblemStatistic `json:"problem_stats"`     // 每个题目的统计信息
 	SubmissionTypes map[string]int              `json:"submission_types"`  // 提交类型统计
 	TeamSolvedCount map[int]int                 `json:"team_solved_count"` // 队伍解题数统计
+	TimeLabels      []string                    `json:"time_labels"`       // 热力图比赛时间标记信息
+	ProblemHeatmap  map[string]map[string][]int `json:"problem_heatmap"`   // 题目热力图数据 {题目ID: {accepted: [], rejected: []}}
 }
 
 // ProblemStatistic 单个题目的统计信息
@@ -301,6 +303,11 @@ func (s *ScoreboardService) GetContestStatistics(contestID string, filter string
 		filteredTeamIDs[result.TeamID] = true
 	}
 
+	// 计算比赛总时长（分钟）
+	contestDurationMinutes := (contest.EndTime - contest.StartTime) / 60
+	// 每5分钟为一个时间段
+	timeSlotCount := int(contestDurationMinutes/5) + 1
+
 	// 统计信息
 	stats := &ContestStatistics{
 		ProblemCount:    contest.ProblemCount,
@@ -308,12 +315,20 @@ func (s *ScoreboardService) GetContestStatistics(contestID string, filter string
 		ProblemStats:    make(map[string]ProblemStatistic),
 		SubmissionTypes: make(map[string]int),
 		TeamSolvedCount: make(map[int]int),
+		TimeLabels:      []string{},
+		ProblemHeatmap:  make(map[string]map[string][]int),
 	}
 
-	// 初始化题目统计
+	// 初始化题目统计和热力图数据
 	for _, problemID := range contest.ProblemIDs {
 		stats.ProblemStats[problemID] = ProblemStatistic{
 			ProblemID: problemID,
+		}
+
+		// 初始化题目热力图数据
+		stats.ProblemHeatmap[problemID] = map[string][]int{
+			"accepted": make([]int, timeSlotCount),
+			"rejected": make([]int, timeSlotCount),
 		}
 	}
 
@@ -327,7 +342,7 @@ func (s *ScoreboardService) GetContestStatistics(contestID string, filter string
 		stats.TeamSolvedCount[result.Score]++
 	}
 
-	// 计算提交总数和类型统计
+	// 处理提交记录，填充热力图数据
 	for _, run := range runs {
 		// 如果有筛选，只统计筛选后队伍的提交
 		if len(filteredTeamIDs) > 0 && !filteredTeamIDs[run.TeamID] {
@@ -335,18 +350,32 @@ func (s *ScoreboardService) GetContestStatistics(contestID string, filter string
 		}
 
 		stats.SubmissionCount++
-
-		// 统计提交状态类型
 		stats.SubmissionTypes[run.Status]++
 
-		// 将数字题号转为字母ID
-		if run.ProblemID >= 1 && run.ProblemID <= len(contest.ProblemIDs) {
-			problemID := contest.ProblemIDs[run.ProblemID-1]
+		// 确保题目ID在有效范围内
+		if run.ProblemID >= 0 && run.ProblemID < len(contest.ProblemIDs) {
+			// 从数字索引获取字母ID
+			problemID := contest.ProblemIDs[run.ProblemID]
 			problemStat := stats.ProblemStats[problemID]
+
+			// 计算该提交所在的时间段
+			relativeMinutes := run.Timestamp / 1000 / 60 // 转换为分钟
+			position := int(relativeMinutes / 5)         // 每5分钟一个时间段
+
+			// 确保时间段索引在有效范围内
+			if position >= 0 && position < timeSlotCount {
+				// 更新题目热力图数据
+				switch run.Status {
+				case "ACCEPTED":
+					stats.ProblemHeatmap[problemID]["accepted"][position]++
+				default:
+					stats.ProblemHeatmap[problemID]["rejected"][position]++
+				}
+			}
 
 			// 更新题目统计信息
 			switch run.Status {
-			case "accepted":
+			case "ACCEPTED":
 				problemStat.Accepted++
 			case "frozen":
 				problemStat.Pending++
@@ -357,6 +386,14 @@ func (s *ScoreboardService) GetContestStatistics(contestID string, filter string
 			problemStat.TotalAttempts++
 			stats.ProblemStats[problemID] = problemStat
 		}
+	}
+
+	// 生成热力图比赛时间标记信息
+	stats.TimeLabels = make([]string, timeSlotCount)
+	for i := 0; i < timeSlotCount; i++ {
+		// 将时间点转换为更友好的显示格式（分钟数）
+		minutesMark := i * 5
+		stats.TimeLabels[i] = fmt.Sprintf("%d", minutesMark)
 	}
 
 	return stats, nil
