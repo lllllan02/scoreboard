@@ -21,23 +21,51 @@ let contestDuration = 0;
 
 // 初始化页面
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('初始化页面开始');
+    
+    // 标记是否已经加载数据，防止重复加载
+    window.dataLoaded = false;
+    
+    // 标记是否正在加载统计数据，防止重复加载
+    window.loadingStatistics = false;
+    
+    // 标记是否正在加载记分板数据，防止重复加载
+    window.loadingScoreboard = false;
+    
     // 格式化显示开始和结束时间
     formatContestTimes();
     
     // 启动计时器（会调用updateTimeDisplay更新比赛状态）
+    // 注意：已修改updateTimeDisplay函数，它会在需要时加载数据
     startTimer();
     
     // 设置组别筛选事件
     setupGroupFilter();
     
-    // 设置刷新按钮事件
-    document.getElementById('refreshBtn').addEventListener('click', function() {
-        loadScoreboardData();
-        showNotification('记分板已刷新', 'success');
-    });
+    // 设置刷新按钮事件（如果存在）
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+            loadScoreboardData();
+            showNotification('记分板已刷新', 'success');
+        });
+    }
+
+    // 设置统计按钮事件
+    const statisticsBtn = document.getElementById('statisticsBtn');
+    if (statisticsBtn) {
+        statisticsBtn.addEventListener('click', function() {
+            showStatistics();
+        });
+        console.log('统计按钮事件已绑定');
+    } else {
+        console.error('找不到统计按钮元素');
+    }
 
     // 初始化进度条功能
     initProgressBar();
+    
+    console.log('初始化页面完成');
 });
 
 // 格式化显示比赛时间
@@ -177,7 +205,11 @@ function initProgressBar() {
             
             // 只在拖动进度条时重新加载数据
             const selectedTime = calculateTimeFromProgress();
-            if (selectedTime) {
+            if (selectedTime && Number.isInteger(selectedTime)) {
+                console.log(`拖动进度条后加载数据，时间戳: ${selectedTime}`);
+                
+                // 直接调用loadScoreboardData函数，使用时间戳作为参数
+                // 让它来处理请求防重复和错误等逻辑
                 loadScoreboardData(selectedTime);
             }
         }
@@ -190,7 +222,10 @@ function initProgressBar() {
             
             // 只在拖动进度条时重新加载数据
             const selectedTime = calculateTimeFromProgress();
-            if (selectedTime) {
+            if (selectedTime && Number.isInteger(selectedTime)) {
+                console.log(`触摸释放后加载数据，时间戳: ${selectedTime}`);
+                
+                // 直接调用loadScoreboardData函数，使用时间戳作为参数
                 loadScoreboardData(selectedTime);
             }
         }
@@ -214,7 +249,10 @@ function initProgressBar() {
         
         // 计算对应的时间戳，加载数据
         const selectedTime = calculateTimeFromProgress();
-        if (selectedTime) {
+        if (selectedTime && Number.isInteger(selectedTime)) {
+            console.log(`点击进度条加载数据，时间戳: ${selectedTime}`);
+            
+            // 直接调用loadScoreboardData函数，使用时间戳作为参数
             loadScoreboardData(selectedTime);
         }
     });
@@ -307,16 +345,71 @@ function getContrastColor(backgroundColor) {
 }
 
 // 加载记分板数据
-function loadScoreboardData(selectedTime) {
+function loadScoreboardData(selectedTimeOrFilter) {
+    // 防止重复调用
+    if (window.loadingScoreboard) {
+        console.log('正在加载记分板数据，忽略重复调用');
+        return;
+    }
+    
+    // 设置正在加载标记
+    window.loadingScoreboard = true;
+    
+    // 判断参数类型，区分是时间点还是筛选条件
+    let isFilter = typeof selectedTimeOrFilter === 'string';
+    let selectedTime = !isFilter ? selectedTimeOrFilter : null;
+    let filterType = isFilter ? selectedTimeOrFilter : currentGroup;
+    
+    // 有效的筛选类型列表
+    const validFilters = ['all', 'official', 'unofficial', 'girls', 'undergraduate', 'special'];
+    
+    // 获取contestInfo - 可能来自内联js或外部变量
+    const contestInfoObj = window.contestInfo || {};
+    const contestId = contestInfoObj.id;
+    
+    if (!contestId) {
+        // 尝试从隐藏元素获取contestId
+        const contestDataElem = document.getElementById('contest-data');
+        if (contestDataElem) {
+            const id = contestDataElem.getAttribute('data-contest-id');
+            if (id) {
+                console.log('从HTML元素获取到比赛ID:', id);
+                // 如果获取成功，更新contestInfo对象
+                if (!window.contestInfo) {
+                    window.contestInfo = {
+                        id: id,
+                        startTime: parseInt(contestDataElem.getAttribute('data-start-time') || '0'),
+                        endTime: parseInt(contestDataElem.getAttribute('data-end-time') || '0'),
+                        currentStatus: contestDataElem.getAttribute('data-status') || ''
+                    };
+                }
+            } else {
+                console.error('隐藏元素中找不到比赛ID');
+                showErrorMessage('无法获取比赛ID');
+                window.loadingScoreboard = false;
+                return;
+            }
+        } else {
+            console.error('找不到比赛ID元素');
+            showErrorMessage('无法获取比赛信息');
+            window.loadingScoreboard = false;
+            return;
+        }
+    }
+    
+    // 重新获取contestId（可能已更新）
+    const finalContestId = window.contestInfo.id;
+    
     // 构建基本URL
-    let url = `/api/scoreboard/${contestInfo.id}`;
+    let url = `/api/scoreboard/${finalContestId}`;
     
     // 添加查询参数
     const params = new URLSearchParams();
-    if (currentGroup) {
-        params.append('filter', currentGroup);
+    // 检查筛选类型是否有效
+    if (filterType && filterType !== 'all' && validFilters.includes(filterType)) {
+        params.append('filter', filterType);
     }
-    if (selectedTime) {
+    if (selectedTime && Number.isInteger(selectedTime)) {
         params.append('time', selectedTime);
     }
     
@@ -341,14 +434,21 @@ function loadScoreboardData(selectedTime) {
             if (!data || !data.results || !data.contest) {
                 console.error('获取的记分板数据格式不正确:', data);
                 showErrorMessage('获取记分板数据失败，返回的数据格式不正确');
+                window.loadingScoreboard = false;
                 return;
             }
             scoreboardData = data;
             renderScoreboard(data);
+            
+            // 重置加载标记
+            window.loadingScoreboard = false;
         })
         .catch(error => {
             console.error('获取记分板数据失败:', error);
             showErrorMessage('获取记分板数据失败: ' + error.message);
+            
+            // 重置加载标记
+            window.loadingScoreboard = false;
         });
 }
 
@@ -572,8 +672,8 @@ function updateProblemColumnStyles(problemIds, balloonColors, problemStatsMap) {
     const problemColumns = headerRow.querySelectorAll('th.problem-column');
     
     problemColumns.forEach((column, index) => {
-        const problemId = problemIds[index];
-        const balloonColor = balloonColors[index] || {};
+        const problemId = index < problemIds.length ? problemIds[index] : column.textContent.trim();
+        const balloonColor = balloonColors && index < balloonColors.length ? balloonColors[index] || {} : {};
         const problemStats = problemStatsMap ? problemStatsMap[problemId] : null;
         
         // 更新表头内容，只添加通过数量
@@ -585,6 +685,9 @@ function updateProblemColumnStyles(problemIds, balloonColors, problemStatsMap) {
                 <div>${problemId}</div>
                 <div class="small problem-stats">${solvedCount}</div>
             `;
+        } else {
+            // 如果没有统计数据，至少保留题号
+            column.innerHTML = `<div>${problemId}</div>`;
         }
         
         // 默认使用深绿色作为题目列头背景
@@ -607,8 +710,12 @@ function updateProblemColumnStyles(problemIds, balloonColors, problemStatsMap) {
         // 一次性设置样式，避免多次覆盖
         column.setAttribute('style', styleString);
         
+        // 确保设置了所有必要的类
+        column.classList.add('text-center', 'problem-column');
+        column.setAttribute('scope', 'col');
+        
         // 添加调试信息
-        console.log(`题目 ${problemIds[index]}: 背景色=${backgroundColor}, 文字颜色=${textColor}, 最终颜色=${column.style.color}`);
+        console.log(`题目 ${problemId}: 背景色=${backgroundColor}, 文字颜色=${textColor}`);
     });
 }
 
@@ -627,11 +734,12 @@ function setupGroupFilter() {
             this.classList.add('active');
             
             // 更新当前组别
-            currentGroup = this.getAttribute('data-group');
+            const newGroup = this.getAttribute('data-group');
+            console.log(`切换组别筛选: ${currentGroup} -> ${newGroup}`);
+            currentGroup = newGroup;
             
-            // 获取当前时间并重新加载数据
-            const currentTime = getCurrentTimestamp();
-            loadScoreboardData(currentTime);
+            // 使用组别字符串作为筛选参数加载数据
+            loadScoreboardData(currentGroup);
             
             // 更新下拉按钮文本
             const groupText = currentGroup ? this.textContent : '筛选组别';
@@ -647,11 +755,44 @@ function startTimer() {
         clearInterval(timerInterval);
     }
     
-    // 更新时间显示
+    // 先执行一次更新
     updateTimeDisplay();
     
-    // 设置定时器每秒更新一次
-    timerInterval = setInterval(updateTimeDisplay, 1000);
+    // 检查比赛是否已结束
+    const currentTime = getCurrentTimestamp();
+    const endTime = parseInt(contestInfo.startTime) + parseInt(contestInfo.endTime);
+    const startTime = parseInt(contestInfo.startTime);
+    
+    console.log(`比赛时间: 开始=${new Date(startTime*1000).toLocaleString()}, 结束=${new Date(endTime*1000).toLocaleString()}, 现在=${new Date(currentTime*1000).toLocaleString()}`);
+    
+    if (currentTime > endTime) {
+        // 比赛已结束，不设置轮询
+        console.log('比赛已结束，不设置轮询');
+        document.getElementById('contest-status').textContent = '已结束';
+        if (document.getElementById('progress-status-text')) {
+            document.getElementById('progress-status-text').textContent = '已结束';
+        }
+        // 不设置定时器，只执行一次初始更新
+        return;
+    } else if (currentTime < startTime) {
+        // 比赛未开始
+        const minutesToStart = Math.floor((startTime - currentTime) / 60);
+        
+        if (minutesToStart > 60) {
+            // 距离开始超过1小时，每小时更新一次
+            console.log(`比赛还有${minutesToStart}分钟开始，设置每小时轮询`);
+            timerInterval = setInterval(updateTimeDisplay, 3600000); // 每小时更新一次
+        } else {
+            // 距离开始不到1小时，每5分钟更新一次
+            console.log(`比赛即将开始（${minutesToStart}分钟），设置每5分钟轮询`);
+            timerInterval = setInterval(updateTimeDisplay, 300000); // 每5分钟更新一次
+        }
+    } else {
+        // 比赛进行中，每分钟更新一次
+        const minutesToEnd = Math.floor((endTime - currentTime) / 60);
+        console.log(`比赛进行中，还剩${minutesToEnd}分钟，设置每分钟轮询`);
+        timerInterval = setInterval(updateTimeDisplay, 60000); // 每分钟更新一次
+    }
 }
 
 // 更新时间显示
@@ -659,7 +800,7 @@ function updateTimeDisplay() {
     // 获取当前时间和比赛时间信息
     const currentTime = getCurrentTimestamp();
     const startTime = parseInt(contestInfo.startTime);
-    const endTime = parseInt(contestInfo.endTime);
+    const endTime = parseInt(contestInfo.endTime) + startTime; // 确保计算的是绝对结束时间
     const frozenTime = contestInfo.frozenTime ? parseInt(contestInfo.frozenTime) : null;
     
     // 计算已用时间和剩余时间（秒）
@@ -688,7 +829,7 @@ function updateTimeDisplay() {
         indicatorColor = '#28a745'; // 绿色
         
         // 检查是否冻结
-        if (frozenTime && currentTime >= frozenTime) {
+        if (frozenTime && currentTime >= (startTime + frozenTime)) {
             currentStatus = "已冻结";
             contestStatus = "已冻结";
             indicatorColor = '#fd7e14'; // 橙色
@@ -697,6 +838,13 @@ function updateTimeDisplay() {
         currentStatus = "已结束";
         contestStatus = "已结束";
         indicatorColor = '#dc3545'; // 红色
+        
+        // 如果比赛已结束，清除定时器（不需要再轮询）
+        if (timerInterval) {
+            console.log('比赛已结束，停止轮询');
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
     }
     
     // 更新状态文本
@@ -739,11 +887,33 @@ function updateTimeDisplay() {
     updateProgressBar(currentTime);
     
     // 仅在以下情况下加载记分板数据：
-    // 1. 初次加载（scoreboardData为null）
+    // 1. 初次加载（scoreboardData为null且未加载过数据）
     // 2. 状态变化时（从未开始到进行中，或从进行中到已结束）
-    if (!scoreboardData || previousStatus !== contestStatus) {
-        // 使用当前时间加载记分板数据
-        loadScoreboardData(currentTime);
+    if ((!scoreboardData && !window.dataLoaded) || previousStatus !== contestStatus) {
+        console.log(`状态变化: ${previousStatus} -> ${contestStatus}，重新加载记分板数据`);
+        
+        // 设置已加载标记，防止重复加载
+        window.dataLoaded = true;
+        
+        // 获取当前筛选类型
+        const activeFilter = document.querySelector('.filter-buttons .btn.active');
+        const filterType = activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
+        
+        // 有效的筛选类型列表
+        const validFilters = ['all', 'official', 'unofficial', 'girls', 'undergraduate', 'special'];
+        
+        // 验证筛选类型
+        const validFilter = validFilters.includes(filterType) ? filterType : 'all';
+        
+        // 确保使用字符串筛选类型参数调用loadScoreboardData，而不是使用时间戳
+        loadScoreboardData(validFilter);
+        
+        // 如果状态变为"已结束"，停止轮询
+        if (contestStatus === "已结束" && timerInterval) {
+            console.log('比赛已结束，停止轮询');
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
     }
 }
 
@@ -849,4 +1019,637 @@ function calculateTimeFromProgress() {
     const timestamp = startTime + (percentage * (endTime - startTime));
     
     return Math.floor(timestamp);
+}
+
+// 显示统计信息
+function showStatistics() {
+    console.log('正在显示统计信息');
+    
+    // 防止重复调用
+    if (window.loadingStatistics) {
+        console.log('正在加载统计数据，忽略重复调用');
+        return;
+    }
+    
+    // 设置正在加载标记
+    window.loadingStatistics = true;
+    
+    // 获取排行榜表格容器
+    const scoreboardContainer = document.querySelector('.card-body .table-responsive');
+    if (!scoreboardContainer) {
+        console.error('找不到排行榜容器');
+        showNotification('找不到排行榜容器', 'danger');
+        window.loadingStatistics = false;
+        return;
+    }
+    
+    // 显示加载中状态
+    scoreboardContainer.innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">加载中...</span>
+            </div>
+            <p class="mb-0">正在加载统计数据...</p>
+        </div>
+    `;
+    
+    // 切换按钮显示状态
+    const statisticsBtn = document.getElementById('statisticsBtn');
+    const scoreboardBtn = document.getElementById('scoreboardBtn');
+    if (statisticsBtn) {
+        statisticsBtn.style.display = 'none';
+        statisticsBtn.classList.remove('btn-primary');
+        statisticsBtn.classList.add('btn-outline-primary');
+    }
+    if (scoreboardBtn) {
+        scoreboardBtn.style.display = 'inline-block';
+        scoreboardBtn.classList.remove('btn-outline-primary');
+        scoreboardBtn.classList.add('btn-primary');
+    }
+    
+    // 构建API请求URL，使用原有API接口，增加filter参数
+    const contestId = contestInfo.id;
+    let apiUrl = `/api/statistics/${contestId}`;
+    
+    // 获取当前激活的筛选按钮
+    const activeFilter = document.querySelector('.filter-buttons .btn.active');
+    let filter = 'all';
+    if (activeFilter) {
+        filter = activeFilter.getAttribute('data-filter');
+    }
+    
+    // 有效的筛选类型列表
+    const validFilters = ['all', 'official', 'unofficial', 'girls', 'undergraduate', 'special'];
+    
+    // 如果筛选类型无效，使用默认值
+    if (!validFilters.includes(filter)) {
+        console.warn(`无效的筛选类型: ${filter}，使用默认值 'all'`);
+        filter = 'all';
+    }
+    
+    // 添加筛选参数
+    const urlParams = new URLSearchParams();
+    if (filter !== 'all') {
+        urlParams.append('filter', filter);
+    }
+    if (urlParams.toString()) {
+        apiUrl += '?' + urlParams.toString();
+    }
+    
+    console.log('正在请求统计数据，URL:', apiUrl);
+    
+    // 发送请求到后端
+    fetch(apiUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('网络请求失败');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // 显示统计数据
+            displayStatistics(data, filter, scoreboardContainer);
+            // 重置加载标记
+            window.loadingStatistics = false;
+        })
+        .catch(error => {
+            console.error('统计请求失败:', error);
+            
+            // 显示错误信息
+            scoreboardContainer.innerHTML = `
+                <div class="alert alert-danger my-5">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    获取统计数据失败: ${error.message}
+                </div>
+            `;
+            
+            // 恢复按钮状态
+            if (statisticsBtn) {
+                statisticsBtn.style.display = 'inline-block';
+                statisticsBtn.classList.remove('btn-outline-primary');
+                statisticsBtn.classList.add('btn-primary');
+            }
+            if (scoreboardBtn) {
+                scoreboardBtn.style.display = 'none';
+                scoreboardBtn.classList.remove('btn-primary');
+                scoreboardBtn.classList.add('btn-outline-primary');
+            }
+            
+            showNotification('获取统计数据失败，请重试', 'danger');
+            // 重置加载标记
+            window.loadingStatistics = false;
+        });
+}
+
+// 显示统计数据
+function displayStatistics(data, filter, container) {
+    // 调用内部实现函数
+    window.internalDisplayStatistics(data, filter, container);
+}
+
+// 生成卡片式热力图（图二样式）
+function generateCardHeatmap(problemStats) {
+    if (!problemStats || Object.keys(problemStats).length === 0) {
+        return '<div class="alert alert-warning">没有可用的题目统计数据</div>';
+    }
+
+    // 创建热力图容器
+    let heatmapHtml = '<div class="card-heatmap-container">';
+    
+    // 按题目ID排序
+    const sortedProblemIds = Object.keys(problemStats).sort();
+    
+    // 为每个题目生成卡片式热力图
+    sortedProblemIds.forEach(problemId => {
+        const stats = problemStats[problemId];
+        
+        // 计算总提交次数
+        const totalSubmissions = stats.accepted + stats.rejected + stats.pending;
+        if (totalSubmissions === 0) return; // 跳过无提交的题目
+        
+        // 计算通过率
+        const acceptRate = totalSubmissions > 0 ? (stats.accepted / totalSubmissions * 100).toFixed(1) : '0.0';
+        
+        // 创建题目卡片 - 完全匹配新截图
+        heatmapHtml += `
+            <div class="problem-card">
+                <div class="problem-badge" style="background-color: #4CAF50;">${problemId}</div>
+                
+                <div style="width: 100%; padding: 0 15px; margin-top: 10px; text-align: left;">
+                    <div class="stat-row">
+                        <span class="stat-percent">${acceptRate}%</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-submissions">${totalSubmissions}次提交</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    // 关闭容器
+    heatmapHtml += '</div>';
+    return heatmapHtml;
+}
+
+// 生成提交方块 - 不再使用，但保留函数以防需要恢复
+function generateSubmissionBlocks(count, type) {
+    if (count <= 0) return '';
+    
+    // 根据截图现在不需要显示方块，返回空字符串
+    return '';
+}
+
+// 确保关键函数在全局范围内可用
+window.loadScoreboardData = loadScoreboardData;
+window.renderScoreboard = renderScoreboard;
+window.showStatistics = showStatistics;
+window.showNotification = showNotification;
+window.initializeCharts = initializeCharts;
+
+// 内部实现统计数据显示的函数，暴露为全局函数以供筛选功能调用
+window.internalDisplayStatistics = function(data, filter, container) {
+    // 准备数据
+    const filterText = getFilterDisplayText(filter);
+    
+    // 创建统计内容
+    const statsContent = document.createElement('div');
+    statsContent.className = 'statistics-container';
+    statsContent.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="mb-0">比赛统计 ${filterText ? `(${filterText})` : ''}</h4>
+        </div>
+        
+        <!-- 基本统计数据 -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h2 class="card-title">${data.problem_count}</h2>
+                        <p class="card-text">题目数</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h2 class="card-title">${data.team_count}</h2>
+                        <p class="card-text">队伍数</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h2 class="card-title">${data.submission_count}</h2>
+                        <p class="card-text">提交数</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 题目提交情况 -->
+        <div class="mb-4">
+            <h5 class="heatmap-title">题目提交热力图</h5>
+            <div class="problem-heatmap">
+                ${generateCardHeatmap(data.problem_stats)}
+            </div>
+        </div>
+    `;
+    
+    // 清空容器并添加统计内容
+    container.innerHTML = '';
+    container.appendChild(statsContent);
+    
+    // 初始化图表
+    initializeCharts(data);
+};
+
+// 初始化各种图表
+function initializeCharts(data) {
+    // 准备提交类型图表数据
+    const submissionTypeLabels = [];
+    const submissionTypeData = [];
+    const submissionTypeColors = [];
+    
+    // 使用预定义的颜色
+    const submissionTypeColorMap = {
+        'accepted': '#28a745', // 绿色
+        'rejected': '#dc3545', // 红色
+        'frozen': '#ffc107',   // 黄色
+        'pending': '#6c757d'   // 灰色
+    };
+    
+    // 遍历提交类型
+    for (const [type, count] of Object.entries(data.submission_types)) {
+        submissionTypeLabels.push(getSubmissionTypeDisplayText(type));
+        submissionTypeData.push(count);
+        
+        // 使用预定义颜色或默认颜色
+        const color = submissionTypeColorMap[type] || '#007bff';
+        submissionTypeColors.push(color);
+    }
+    
+    // 队伍解题数数据
+    const teamSolvedLabels = [];
+    const teamSolvedData = [];
+    
+    // 遍历解题数统计
+    for (let i = 0; i <= data.problem_count; i++) {
+        teamSolvedLabels.push(i);
+        teamSolvedData.push(data.team_solved_count[i] || 0);
+    }
+    
+    // 构建题目提交数据
+    const problemLabels = [];
+    const acceptedData = [];
+    const rejectedData = [];
+    const pendingData = [];
+    
+    // 遍历题目统计数据
+    for (const problemId of Object.keys(data.problem_stats).sort()) {
+        const stats = data.problem_stats[problemId];
+        problemLabels.push(problemId);
+        acceptedData.push(stats.accepted);
+        rejectedData.push(stats.rejected);
+        pendingData.push(stats.pending);
+    }
+    
+    // 创建提交类型饼图
+    const submissionTypeCtx = document.getElementById('submissionTypeChart');
+    if (submissionTypeCtx) {
+        new Chart(submissionTypeCtx, {
+            type: 'doughnut',
+            data: {
+                labels: submissionTypeLabels,
+                datasets: [{
+                    data: submissionTypeData,
+                    backgroundColor: submissionTypeColors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    },
+                    title: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+    
+    // 创建队伍解题数柱状图
+    const teamSolvedCtx = document.getElementById('teamSolvedChart');
+    if (teamSolvedCtx) {
+        new Chart(teamSolvedCtx, {
+            type: 'bar',
+            data: {
+                labels: teamSolvedLabels,
+                datasets: [{
+                    label: '队伍数',
+                    data: teamSolvedData,
+                    backgroundColor: '#4e73df',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: '过题数'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: '队伍数'
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // 创建题目提交分布堆叠柱状图
+    const problemSubmissionCtx = document.getElementById('problemSubmissionChart');
+    if (problemSubmissionCtx) {
+        new Chart(problemSubmissionCtx, {
+            type: 'bar',
+            data: {
+                labels: problemLabels,
+                datasets: [
+                    {
+                        label: '通过',
+                        data: acceptedData,
+                        backgroundColor: '#28a745',
+                        stack: 'Stack 0'
+                    },
+                    {
+                        label: '拒绝',
+                        data: rejectedData,
+                        backgroundColor: '#dc3545',
+                        stack: 'Stack 0'
+                    },
+                    {
+                        label: '待定',
+                        data: pendingData,
+                        backgroundColor: '#ffc107',
+                        stack: 'Stack 0'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: '题目编号'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        stacked: true,
+                        title: {
+                            display: true,
+                            text: '提交数'
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+// 根据筛选条件获取显示文本
+function getFilterDisplayText(filter) {
+    const filterMap = {
+        'all': '全部',
+        'official': '正式队伍',
+        'unofficial': '打星队伍',
+        'girls': '女队',
+        'undergraduate': '本科组',
+        'special': '专科组'
+    };
+    return filterMap[filter] || filter;
+}
+
+// 提交状态显示文本转换
+function getSubmissionTypeDisplayText(type) {
+    const typeMap = {
+        'accepted': '通过',
+        'rejected': '拒绝',
+        'frozen': '冻结',
+        'wrong_answer': '答案错误',
+        'time_limit_exceeded': '超时',
+        'memory_limit_exceeded': '超内存',
+        'runtime_error': '运行错误',
+        'compilation_error': '编译错误',
+        'pending': '待定'
+    };
+    return typeMap[type] || type;
+}
+
+// 显示通知消息
+function showNotification(message, type = 'info') {
+    // 创建通知元素
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show fixed-top mx-auto mt-3`;
+    notification.style.maxWidth = '500px';
+    notification.style.zIndex = '9999';
+    notification.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+    notification.role = 'alert';
+    
+    // 设置通知内容
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    // 添加到页面
+    document.body.appendChild(notification);
+    
+    // 自动删除通知
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            document.body.removeChild(notification);
+        }, 150);
+    }, 3000);
+}
+
+// 初始化各种图表
+function initializeCharts(data) {
+    // 准备提交类型图表数据
+    const submissionTypeLabels = [];
+    const submissionTypeData = [];
+    const submissionTypeColors = [];
+    
+    // 使用预定义的颜色
+    const submissionTypeColorMap = {
+        'accepted': '#28a745', // 绿色
+        'rejected': '#dc3545', // 红色
+        'frozen': '#ffc107',   // 黄色
+        'pending': '#6c757d'   // 灰色
+    };
+    
+    // 遍历提交类型
+    for (const [type, count] of Object.entries(data.submission_types)) {
+        submissionTypeLabels.push(getSubmissionTypeDisplayText(type));
+        submissionTypeData.push(count);
+        
+        // 使用预定义颜色或默认颜色
+        const color = submissionTypeColorMap[type] || '#007bff';
+        submissionTypeColors.push(color);
+    }
+    
+    // 队伍解题数数据
+    const teamSolvedLabels = [];
+    const teamSolvedData = [];
+    
+    // 遍历解题数统计
+    for (let i = 0; i <= data.problem_count; i++) {
+        teamSolvedLabels.push(i);
+        teamSolvedData.push(data.team_solved_count[i] || 0);
+    }
+    
+    // 构建题目提交数据
+    const problemLabels = [];
+    const acceptedData = [];
+    const rejectedData = [];
+    const pendingData = [];
+    
+    // 遍历题目统计数据
+    for (const problemId of Object.keys(data.problem_stats).sort()) {
+        const stats = data.problem_stats[problemId];
+        problemLabels.push(problemId);
+        acceptedData.push(stats.accepted);
+        rejectedData.push(stats.rejected);
+        pendingData.push(stats.pending);
+    }
+    
+    // 创建提交类型饼图
+    const submissionTypeCtx = document.getElementById('submissionTypeChart');
+    if (submissionTypeCtx) {
+        new Chart(submissionTypeCtx, {
+            type: 'doughnut',
+            data: {
+                labels: submissionTypeLabels,
+                datasets: [{
+                    data: submissionTypeData,
+                    backgroundColor: submissionTypeColors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    },
+                    title: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+    
+    // 创建队伍解题数柱状图
+    const teamSolvedCtx = document.getElementById('teamSolvedChart');
+    if (teamSolvedCtx) {
+        new Chart(teamSolvedCtx, {
+            type: 'bar',
+            data: {
+                labels: teamSolvedLabels,
+                datasets: [{
+                    label: '队伍数',
+                    data: teamSolvedData,
+                    backgroundColor: '#4e73df',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: '过题数'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: '队伍数'
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // 创建题目提交分布堆叠柱状图
+    const problemSubmissionCtx = document.getElementById('problemSubmissionChart');
+    if (problemSubmissionCtx) {
+        new Chart(problemSubmissionCtx, {
+            type: 'bar',
+            data: {
+                labels: problemLabels,
+                datasets: [
+                    {
+                        label: '通过',
+                        data: acceptedData,
+                        backgroundColor: '#28a745',
+                        stack: 'Stack 0'
+                    },
+                    {
+                        label: '拒绝',
+                        data: rejectedData,
+                        backgroundColor: '#dc3545',
+                        stack: 'Stack 0'
+                    },
+                    {
+                        label: '待定',
+                        data: pendingData,
+                        backgroundColor: '#ffc107',
+                        stack: 'Stack 0'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: '题目编号'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        stacked: true,
+                        title: {
+                            display: true,
+                            text: '提交数'
+                        }
+                    }
+                }
+            }
+        });
+    }
 } 

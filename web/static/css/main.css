@@ -926,4 +926,89 @@ td.problem-cell.problem-first-to-solve {
 
 .nav-link i {
     margin-right: 5px;
+}
+
+/* 卡片式热力图样式 */
+.card-heatmap-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+    gap: 15px;
+    padding: 10px;
+}
+
+.problem-card {
+    position: relative;
+    background-color: white;
+    border-radius: 12px;
+    padding: 20px 15px 15px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    height: 110px;
+    border: 1px solid #eee;
+}
+
+.problem-badge {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 16px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    z-index: 2;
+}
+
+/* 统计行样式 */
+.stat-row {
+    margin-bottom: 8px;
+}
+
+.stat-percent {
+    font-size: 0.9rem;
+    font-weight: bold;
+    color: #333;
+}
+
+.stat-submissions {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+/* 适配移动设备的热力图样式 */
+@media (max-width: 768px) {
+    .card-heatmap-container {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 12px;
+    }
+    
+    .problem-card {
+        height: 100px;
+        padding: 15px 10px 10px;
+    }
+    
+    .problem-badge {
+        width: 26px;
+        height: 26px;
+        font-size: 14px;
+    }
+    
+    .stat-row {
+        margin-bottom: 6px;
+    }
+    
+    .stat-percent {
+        font-size: 0.85rem;
+    }
+    
+    .stat-submissions {
+        font-size: 0.8rem;
+    }
 } 

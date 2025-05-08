@@ -255,3 +255,109 @@ func RecalculateRanking(results []*model.Result) {
 		}
 	}
 }
+
+// ContestStatistics 比赛统计信息
+type ContestStatistics struct {
+	ProblemCount    int                         `json:"problem_count"`     // 题目数
+	TeamCount       int                         `json:"team_count"`        // 队伍数
+	SubmissionCount int                         `json:"submission_count"`  // 提交数
+	ProblemStats    map[string]ProblemStatistic `json:"problem_stats"`     // 每个题目的统计信息
+	SubmissionTypes map[string]int              `json:"submission_types"`  // 提交类型统计
+	TeamSolvedCount map[int]int                 `json:"team_solved_count"` // 队伍解题数统计
+}
+
+// ProblemStatistic 单个题目的统计信息
+type ProblemStatistic struct {
+	ProblemID     string `json:"problem_id"`
+	Accepted      int    `json:"accepted"`       // 通过数
+	Rejected      int    `json:"rejected"`       // 拒绝数
+	Pending       int    `json:"pending"`        // 待定数
+	TotalAttempts int    `json:"total_attempts"` // 总尝试次数
+}
+
+// GetContestStatistics 获取比赛的统计信息
+func (s *ScoreboardService) GetContestStatistics(contestID string, filter string) (*ContestStatistics, error) {
+	// 获取比赛信息
+	contest, err := s.GetContest(contestID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 获取所有结果（根据筛选条件）
+	results, _, err := s.GetScoreboardWithFilter(contestID, filter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get results: %w", err)
+	}
+
+	// 获取原始提交记录
+	runs, err := contest.LoadRuns()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load runs: %w", err)
+	}
+
+	// 创建筛选的队伍ID集合
+	filteredTeamIDs := make(map[string]bool)
+	for _, result := range results {
+		filteredTeamIDs[result.TeamID] = true
+	}
+
+	// 统计信息
+	stats := &ContestStatistics{
+		ProblemCount:    contest.ProblemCount,
+		TeamCount:       len(results),
+		ProblemStats:    make(map[string]ProblemStatistic),
+		SubmissionTypes: make(map[string]int),
+		TeamSolvedCount: make(map[int]int),
+	}
+
+	// 初始化题目统计
+	for _, problemID := range contest.ProblemIDs {
+		stats.ProblemStats[problemID] = ProblemStatistic{
+			ProblemID: problemID,
+		}
+	}
+
+	// 初始化队伍解题数统计
+	for i := 0; i <= contest.ProblemCount; i++ {
+		stats.TeamSolvedCount[i] = 0
+	}
+
+	// 统计队伍解题数
+	for _, result := range results {
+		stats.TeamSolvedCount[result.Score]++
+	}
+
+	// 计算提交总数和类型统计
+	for _, run := range runs {
+		// 如果有筛选，只统计筛选后队伍的提交
+		if len(filteredTeamIDs) > 0 && !filteredTeamIDs[run.TeamID] {
+			continue
+		}
+
+		stats.SubmissionCount++
+
+		// 统计提交状态类型
+		stats.SubmissionTypes[run.Status]++
+
+		// 将数字题号转为字母ID
+		if run.ProblemID >= 1 && run.ProblemID <= len(contest.ProblemIDs) {
+			problemID := contest.ProblemIDs[run.ProblemID-1]
+			problemStat := stats.ProblemStats[problemID]
+
+			// 更新题目统计信息
+			switch run.Status {
+			case "accepted":
+				problemStat.Accepted++
+			case "frozen":
+				problemStat.Pending++
+			default:
+				problemStat.Rejected++
+			}
+
+			problemStat.TotalAttempts++
+			stats.ProblemStats[problemID] = problemStat
+		}
+	}
+
+	return stats, nil
+}

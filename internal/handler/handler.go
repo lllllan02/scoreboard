@@ -137,3 +137,37 @@ func respondJSON(w http.ResponseWriter, status int, data interface{}) {
 		log.Printf("Error encoding JSON: %v", err)
 	}
 }
+
+// StatisticsHandler 处理获取比赛统计信息的API请求
+func StatisticsHandler(svc *service.ScoreboardService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// 从URL中获取比赛ID
+		parts := strings.Split(r.URL.Path, "/")
+		if len(parts) < 4 {
+			log.Printf("无效的URL路径: %s", r.URL.Path)
+			http.NotFound(w, r)
+			return
+		}
+
+		contestID := strings.TrimPrefix(r.URL.Path, "/api/statistics/")
+		log.Printf("获取比赛统计信息: %s", contestID)
+
+		// 获取筛选参数
+		filter := r.URL.Query().Get("filter")
+
+		// 使用服务层获取统计数据
+		stats, err := svc.GetContestStatistics(contestID, filter)
+		if err != nil {
+			log.Printf("获取统计数据失败: %v", err)
+			if strings.Contains(err.Error(), "not found") {
+				http.NotFound(w, r)
+			} else {
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			}
+			return
+		}
+
+		log.Printf("成功获取统计数据")
+		respondJSON(w, http.StatusOK, stats)
+	}
+}

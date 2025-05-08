@@ -10,6 +10,8 @@
     <link rel="stylesheet" href="/static/css/bootstrap.min.css?v=1.1">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="/static/css/main.css?v=1.9">
+    <!-- Chart.js 图表库 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .filter-buttons {
             margin-bottom: 8px;
@@ -95,6 +97,241 @@
                 margin-bottom: 10px;
             }
         }
+        
+        /* 统计相关样式 */
+        #statisticsBtn {
+            background-color: #6f42c1;
+            border-color: #6f42c1;
+        }
+        #statisticsBtn:hover {
+            background-color: #5e35b1;
+            border-color: #5e35b1;
+        }
+        .problem-stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 15px;
+        }
+        .problem-stat-item {
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 10px;
+            background-color: #f8f9fa;
+        }
+        .problem-id {
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 5px;
+            font-size: 1.1rem;
+        }
+        .submission-heat-map {
+            height: 20px;
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            margin: 5px 0;
+        }
+        .heat-bar {
+            height: 100%;
+        }
+        .heat-bar.accepted {
+            background-color: #28a745;
+        }
+        .heat-bar.rejected {
+            background-color: #dc3545;
+        }
+        .heat-bar.pending {
+            background-color: #ffc107;
+        }
+        .problem-stats-detail {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        .accepted-rate {
+            font-weight: bold;
+        }
+         
+        /* 图表样式 */
+        .chart-container {
+            position: relative;
+            margin: auto;
+            height: 250px;
+        }
+        .modal-xl {
+            max-width: 90%;
+        }
+        .problem-heatmap {
+            margin-top: 15px;
+        }
+        .card-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid rgba(0,0,0,.125);
+        }
+        .card-title {
+            margin-bottom: 0;
+            color: #495057;
+        }
+        
+        /* 统计相关样式 */
+        .statistics-container {
+            padding: 15px;
+        }
+        .problem-stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+        }
+        .problem-stat-item {
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 10px;
+            background-color: #f8f9fa;
+        }
+        .problem-id {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .submission-heat-map {
+            height: 8px;
+            display: flex;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .heat-bar {
+            height: 100%;
+        }
+        .heat-bar.accepted {
+            background-color: #28a745;
+        }
+        .heat-bar.rejected {
+            background-color: #dc3545;
+        }
+        .heat-bar.pending {
+            background-color: #ffc107;
+        }
+        .problem-stats-detail {
+            font-size: 0.875rem;
+            display: flex;
+            justify-content: space-between;
+        }
+        .accepted-rate {
+            font-weight: bold;
+        }
+        .submission-count {
+            color: #6c757d;
+        }
+        
+        /* 新的热力图样式 */
+        .heatmap-title {
+            text-align: center;
+            margin: 15px 0;
+            color: #333;
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+        
+        .card-heatmap-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+            gap: 15px;
+            padding: 10px;
+        }
+        
+        .problem-card {
+            position: relative;
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px 15px 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            height: 120px;
+            border: 1px solid #eee;
+        }
+        
+        .problem-badge {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .dots-container {
+            margin-top: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex-grow: 1;
+        }
+        
+        .dots-row {
+            display: flex;
+            flex-wrap: wrap;
+            min-height: 16px;
+            align-items: center;
+            overflow: hidden;
+            padding: 2px 5px;
+        }
+        
+        .accepted-row {
+            border-bottom: 1px dashed #eee;
+            margin-bottom: 2px;
+        }
+        
+        .dot {
+            width: 10px;
+            height: 10px;
+            margin: 2px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+        
+        .dot.accepted {
+            background-color: #28a745;
+        }
+        
+        .dot.rejected {
+            background-color: #dc3545;
+        }
+        
+        .dot.pending {
+            background-color: #ffc107;
+        }
+        
+        .dot.placeholder {
+            background-color: transparent;
+        }
+        
+        .problem-stats {
+            margin-top: auto;
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            font-size: 0.85rem;
+            color: #666;
+        }
+        
+        .accept-rate {
+            font-weight: bold;
+        }
+        
+        .submission-count {
+            color: #999;
+        }
     </style>
 </head>
 <body>
@@ -126,6 +363,14 @@
                     </div>
                     <!-- 隐藏的状态元素，用于JS状态管理 -->
                     <div id="contest-status" class="d-none">{{ .Status }}</div>
+                    
+                    <!-- 添加隐藏元素存储必要的数据 -->
+                    <div id="contest-data" class="d-none"
+                         data-contest-id="{{ .ContestID }}"
+                         data-start-time="{{ .Contest.StartTime }}"
+                         data-end-time="{{ .Contest.EndTime }}"
+                         data-status="{{ .Status }}">
+                    </div>
                 </div>
                 <div class="col-md-5">
                     <!-- 状态小版块已移除 -->
@@ -173,7 +418,7 @@
         <!-- 筛选和刷新区域 - 放在排行榜外面，无背景框 -->
         <div class="row" style="margin-bottom: 8px;">
             <div class="col-12">
-                <div class="filters-container">
+                <div class="filters-container d-flex justify-content-between">
                     <div class="filter-buttons">
                         <button type="button" class="btn btn-sm active" data-filter="all">全部</button>
                         <button type="button" class="btn btn-sm" data-filter="official">正式队伍</button>
@@ -181,6 +426,14 @@
                         <button type="button" class="btn btn-sm" data-filter="girls">女队</button>
                         <button type="button" class="btn btn-sm" data-filter="undergraduate">本科组</button>
                         <button type="button" class="btn btn-sm" data-filter="special">专科组</button>
+                    </div>
+                    <div class="action-buttons">
+                        <button type="button" id="scoreboardBtn" class="btn btn-sm btn-outline-primary" style="margin-right: 5px; display: none;">
+                            <i class="bi bi-table"></i> 排行榜
+                        </button>
+                        <button type="button" id="statisticsBtn" class="btn btn-sm btn-primary">
+                            <i class="bi bi-bar-chart-line"></i> 统计
+                        </button>
                     </div>
                 </div>
             </div>
@@ -238,20 +491,106 @@
             frozenTime: "{{ .TimeInfo.frozen_time }}",
             currentStatus: "{{ .Status }}"
         };
+        
         console.log("加载比赛信息:", contestInfo);
     </script>
     <script src="/static/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/main.js?v=1.7"></script>
-    <script src="/static/js/scoreboard.js?v=1.7"></script>
+    <script src="/static/js/scoreboard.js?v=1.8"></script>
+    <script src="/static/js/debug.js?v=1.0"></script>
     <script>
+        // 统一的表格初始化函数，用于页面初始化和统计视图切换回排行榜视图时
+        function initScoreboardTable(filterType = 'all') {
+            // 获取表格容器
+            const containerElement = document.querySelector('.card-body .table-responsive');
+            if (!containerElement) return;
+            
+            // 保存原始的题目标识符，以便重建表格
+            const problemIds = [];
+            const existingHeaders = document.querySelectorAll('#scoreboard-table th.problem-column');
+            existingHeaders.forEach(header => {
+                problemIds.push(header.textContent.trim());
+            });
+            
+            // 如果没有找到题目标识符，使用默认的A-J
+            const defaultProblemIds = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+            const finalProblemIds = problemIds.length > 0 ? problemIds : defaultProblemIds;
+            
+            // 生成题目列HTML
+            let problemColumnsHtml = '';
+            finalProblemIds.forEach(id => {
+                problemColumnsHtml += `<th class="text-center problem-column" scope="col">${id}</th>`;
+            });
+            
+            // 清空当前内容，创建表格结构
+            containerElement.innerHTML = `
+                <table class="table table-hover mb-0" id="scoreboard-table">
+                    <thead>
+                        <tr>
+                            <th class="text-center" scope="col">Rank</th>
+                            <th class="text-center" scope="col">School</th>
+                            <th class="text-center" scope="col">Team</th>
+                            <th class="text-center" scope="col">Solved</th>
+                            <th class="text-center" scope="col">Penalty</th>
+                            ${problemColumnsHtml}
+                        </tr>
+                    </thead>
+                    <tbody id="scoreboard-body">
+                        <tr>
+                            <td colspan="${finalProblemIds.length + 5}" class="text-center py-5">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">加载中...</span>
+                                </div>
+                                <p class="mt-2">正在加载记分板数据...</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            `;
+            
+            // 加载排行榜数据
+            loadScoreboardData(filterType);
+        }
+        
         // 更新筛选队伍的逻辑
         function filterTeams(filterType) {
+            // 有效的筛选类型列表
+            const validFilters = ['all', 'official', 'unofficial', 'girls', 'undergraduate', 'special'];
+            
+            // 如果筛选类型无效，使用默认值
+            if (!validFilters.includes(filterType)) {
+                console.warn(`无效的筛选类型: ${filterType}，使用默认值 'all'`);
+                filterType = 'all';
+            }
+            
+            // 检测是否在统计视图
+            const statisticsView = document.querySelector('.statistics-container');
+            if (statisticsView) {
+                // 在统计视图中，通过showStatistics重新加载统计数据
+                if (typeof window.showStatistics === 'function') {
+                    // 先更新激活的筛选按钮
+                    document.querySelectorAll('.filter-buttons .btn').forEach(btn => {
+                        if (btn.getAttribute('data-filter') === filterType) {
+                            btn.classList.add('active');
+                        } else {
+                            btn.classList.remove('active');
+                        }
+                    });
+                    
+                    // 然后重新加载统计数据
+                    window.showStatistics();
+                }
+                return;
+            }
+            
+            // 在记分板视图中，执行原有逻辑
             // 显示加载状态
             const scoreboard = document.getElementById('scoreboard-body');
             if (scoreboard) {
+                const columnCount = document.querySelectorAll('#scoreboard-table th').length;
                 scoreboard.innerHTML = `
                     <tr>
-                        <td colspan="${document.querySelectorAll('#scoreboard-table th').length}" class="text-center py-5">
+                        <td colspan="${columnCount}" class="text-center py-5">
                             <div class="spinner-border text-primary" role="status">
                                 <span class="visually-hidden">加载中...</span>
                             </div>
@@ -261,13 +600,29 @@
                 `;
             }
             
-            // 构建请求URL，使用原有API接口，增加filter参数
-            const contestId = contestInfo.id;
+            // 调用统一的加载函数
+            loadScoreboardData(filterType);
+        }
+        
+        // 加载排行榜数据的函数
+        function loadScoreboardData(filterType) {
+            // 从隐藏的数据元素中获取contestId
+            const contestDataElem = document.getElementById('contest-data');
+            const contestId = contestDataElem ? contestDataElem.getAttribute('data-contest-id') : 
+                            (window.contestInfo ? window.contestInfo.id : 
+                            (typeof contestInfo !== 'undefined' ? contestInfo.id : ''));
+            
+            if (!contestId) {
+                console.error('无法获取比赛ID');
+                showNotification('无法获取比赛ID', 'danger');
+                return;
+            }
+            
             let apiUrl = `/api/scoreboard/${contestId}`;
             
             // 添加筛选参数
             const urlParams = new URLSearchParams();
-            if (filterType !== 'all') {
+            if (filterType && filterType !== 'all') {
                 urlParams.append('filter', filterType);
             }
             if (urlParams.toString()) {
@@ -292,10 +647,12 @@
                 })
                 .catch(error => {
                     console.error('筛选请求失败:', error);
+                    const scoreboard = document.getElementById('scoreboard-body');
                     if (scoreboard) {
+                        const columnCount = document.querySelectorAll('#scoreboard-table th').length;
                         scoreboard.innerHTML = `
                             <tr>
-                                <td colspan="${document.querySelectorAll('#scoreboard-table th').length}" class="text-center py-5">
+                                <td colspan="${columnCount}" class="text-center py-5">
                                     <div class="alert alert-danger">
                                         <i class="bi bi-exclamation-triangle me-2"></i>
                                         加载失败，请重试
@@ -304,21 +661,62 @@
                             </tr>
                         `;
                     }
+                    
+                    // 显示通知
+                    showNotification('加载数据失败: ' + error.message, 'danger');
                 });
         }
         
-        // 修改原始的渲染函数，添加必要的属性
-        const originalRenderScoreboard = window.renderScoreboard;
-        if (typeof originalRenderScoreboard === 'function') {
-            window.renderScoreboard = function(data) {
-                // 调用原始渲染函数
-                const result = originalRenderScoreboard.apply(this, arguments);
-                return result;
-            };
+        // 全局通知函数
+        function showNotification(message, type = 'info') {
+            if (typeof window.showNotification === 'function') {
+                window.showNotification(message, type);
+            } else {
+                // 简单备用实现
+                const notification = document.createElement('div');
+                notification.className = `alert alert-${type} alert-dismissible fade show fixed-top mx-auto mt-3`;
+                notification.style.maxWidth = '500px';
+                notification.style.zIndex = '9999';
+                notification.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+                notification.role = 'alert';
+                
+                notification.innerHTML = `
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                    setTimeout(() => {
+                        document.body.removeChild(notification);
+                    }, 150);
+                }, 3000);
+            }
         }
         
         // 页面加载后初始化
         document.addEventListener('DOMContentLoaded', function() {
+            // 确保排行榜相关的全局变量已经初始化
+            if (!window.contestInfo) {
+                // 从隐藏的数据元素中获取值
+                const contestDataElem = document.getElementById('contest-data');
+                if (contestDataElem) {
+                    window.contestInfo = {
+                        id: contestDataElem.getAttribute('data-contest-id') || '',
+                        startTime: parseInt(contestDataElem.getAttribute('data-start-time') || '0'),
+                        endTime: parseInt(contestDataElem.getAttribute('data-end-time') || '0'),
+                        currentStatus: contestDataElem.getAttribute('data-status') || ''
+                    };
+                } else if (typeof contestInfo !== 'undefined') {
+                    // 如果只在全局作用域有contestInfo，将其赋值给window对象
+                    window.contestInfo = contestInfo;
+                } else {
+                    console.warn('无法获取比赛信息，部分功能可能不可用');
+                }
+            }
+            
             // 设置筛选按钮点击事件
             document.querySelectorAll('.filter-buttons .btn').forEach(button => {
                 button.addEventListener('click', function() {
@@ -334,6 +732,57 @@
                     filterTeams(filterType);
                 });
             });
+            
+            // 设置统计按钮点击事件
+            const statisticsBtn = document.getElementById('statisticsBtn');
+            if (statisticsBtn) {
+                statisticsBtn.addEventListener('click', function() {
+                    if (typeof window.showStatistics === 'function') {
+                        window.showStatistics();
+                    }
+                });
+            }
+            
+            // 设置排行榜按钮点击事件
+            const scoreboardBtn = document.getElementById('scoreboardBtn');
+            if (scoreboardBtn) {
+                scoreboardBtn.addEventListener('click', function() {
+                    // 获取当前激活的筛选类型
+                    const activeFilter = document.querySelector('.filter-buttons .btn.active');
+                    const filterType = activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
+                    
+                    // 切换按钮显示状态
+                    const statisticsBtn = document.getElementById('statisticsBtn');
+                    if (statisticsBtn) {
+                        statisticsBtn.style.display = 'inline-block';
+                        statisticsBtn.classList.remove('btn-outline-primary');
+                        statisticsBtn.classList.add('btn-primary');
+                    }
+                    
+                    scoreboardBtn.style.display = 'none';
+                    scoreboardBtn.classList.remove('btn-primary');
+                    scoreboardBtn.classList.add('btn-outline-primary');
+                    
+                    // 使用统一的表格初始化函数重建排行榜表格
+                    initScoreboardTable(filterType);
+                });
+            }
+            
+            // 初始化排行榜数据
+            // 获取默认的筛选类型
+            const activeFilter = document.querySelector('.filter-buttons .btn.active');
+            const defaultFilterType = activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
+            
+            // 确保在页面加载完成后延迟一小段时间再调用加载函数，确保所有外部脚本已加载
+            setTimeout(function() {
+                // 如果外部JS文件提供了loadScoreboardData函数，优先使用外部函数
+                if (typeof window.loadScoreboardData === 'function' && window.loadScoreboardData !== loadScoreboardData) {
+                    window.loadScoreboardData(defaultFilterType);
+                } else {
+                    // 否则使用内联函数
+                    loadScoreboardData(defaultFilterType);
+                }
+            }, 100);
         });
     </script>
 </body>
