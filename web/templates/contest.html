@@ -13,27 +13,32 @@
     <style>
         .filter-buttons {
             margin-bottom: 8px;
+            display: inline-flex;
+            background-color: #f8f9fa;
+            border-radius: 24px;
+            padding: 3px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         .filter-buttons .btn {
             font-size: 0.85rem;
-            padding: 4px 10px;
-            border-radius: 4px;
-            margin-right: 6px;
-            margin-bottom: 4px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            padding: 4px 8px;
+            border-radius: 20px;
+            margin-right: 0;
+            margin-bottom: 0;
+            box-shadow: none;
             transition: all 0.2s ease;
-            background-color: white;
-            border-color: #ddd;
+            background-color: transparent;
+            border: none;
             color: #555;
         }
         .filter-buttons .btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            background-color: #f8f9fa;
+            transform: none;
+            box-shadow: none;
+            background-color: rgba(0,0,0,0.05);
         }
         .filter-buttons .btn.active {
-            box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
-            transform: translateY(0);
+            box-shadow: none;
+            transform: none;
             background-color: #0d6efd;
             border-color: #0d6efd;
             color: white;
