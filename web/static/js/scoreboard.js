@@ -35,6 +35,19 @@ document.addEventListener('DOMContentLoaded', function() {
     // 格式化显示开始和结束时间
     formatContestTimes();
     
+    // 从URL获取初始筛选条件
+    const url = new URL(window.location.href);
+    const urlFilter = url.searchParams.get('filter');
+    const urlView = url.searchParams.get('view');
+    
+    // 有效的筛选类型列表
+    const validFilters = ['all', 'official', 'unofficial', 'girls', 'undergraduate', 'special'];
+    // 验证并设置筛选类型
+    const initialFilterType = urlFilter && validFilters.includes(urlFilter) ? urlFilter : 'all';
+    
+    // 设置当前组别
+    currentGroup = initialFilterType;
+    
     // 启动计时器（会调用updateTimeDisplay更新比赛状态）
     // 注意：已修改updateTimeDisplay函数，它会在需要时加载数据
     startTimer();
@@ -46,7 +59,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const refreshBtn = document.getElementById('refreshBtn');
     if (refreshBtn) {
         refreshBtn.addEventListener('click', function() {
-            loadScoreboardData();
+            // 获取当前激活的筛选类型
+            const activeFilter = document.querySelector('.filter-buttons .btn.active');
+            const currentFilter = activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
+            
+            // 使用当前筛选条件刷新数据
+            loadScoreboardData(currentFilter);
             showNotification('记分板已刷新', 'success');
         });
     }
@@ -982,16 +1000,10 @@ function updateTimeDisplay() {
         
         // 获取当前筛选类型
         const activeFilter = document.querySelector('.filter-buttons .btn.active');
-        const filterType = activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
-        
-        // 有效的筛选类型列表
-        const validFilters = ['all', 'official', 'unofficial', 'girls', 'undergraduate', 'special'];
-        
-        // 验证筛选类型
-        const validFilter = validFilters.includes(filterType) ? filterType : 'all';
+        const filterType = activeFilter ? activeFilter.getAttribute('data-filter') : currentGroup || 'all';
         
         // 确保使用字符串筛选类型参数调用loadScoreboardData，而不是使用时间戳
-        loadScoreboardData(validFilter);
+        loadScoreboardData(filterType);
         
         // 如果状态变为"已结束"，停止轮询
         if (contestStatus === "已结束" && timerInterval) {
@@ -1183,11 +1195,20 @@ function showStatistics() {
         
         let apiUrl = `/api/statistics/${contestId}`;
         
-        // 获取当前激活的筛选按钮
+        // 尝试从三个地方获取筛选类型:
+        // 1. 当前激活的筛选按钮
+        // 2. 全局保存的初始筛选类型
+        // 3. 当前保存的组别
+        // 4. 默认值'all'
         const activeFilter = document.querySelector('.filter-buttons .btn.active');
         let filter = 'all';
+        
         if (activeFilter) {
             filter = activeFilter.getAttribute('data-filter');
+        } else if (window.initialFilterType) {
+            filter = window.initialFilterType; 
+        } else if (currentGroup) {
+            filter = currentGroup;
         }
         
         // 有效的筛选类型列表
@@ -1207,6 +1228,9 @@ function showStatistics() {
         if (urlParams.toString()) {
             apiUrl += '?' + urlParams.toString();
         }
+        
+        // 更新URL，保存当前视图和筛选条件
+        updateURLParams(filter, 'statistics');
         
         console.log('正在请求统计数据，URL:', apiUrl);
         
@@ -1266,6 +1290,36 @@ function showStatistics() {
         
         window.loadingStatistics = false;
     }
+}
+
+// 更新URL参数函数
+function updateURLParams(filter, view) {
+    // 检查window对象上是否已有实现此函数
+    if (typeof window.updateURLWithFilter === 'function') {
+        window.updateURLWithFilter(filter, view);
+        return;
+    }
+    
+    // 获取当前URL
+    const url = new URL(window.location.href);
+    const params = url.searchParams;
+    
+    // 更新筛选类型参数
+    if (filter && filter !== 'all') {
+        params.set('filter', filter);
+    } else {
+        params.delete('filter'); // 如果是'all'，则删除参数
+    }
+    
+    // 更新视图参数
+    if (view) {
+        params.set('view', view);
+    } else {
+        params.delete('view');
+    }
+    
+    // 更新URL，不刷新页面
+    window.history.replaceState({}, '', url.toString());
 }
 
 // 加载统计数据
