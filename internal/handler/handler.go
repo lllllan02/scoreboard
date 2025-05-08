@@ -101,24 +101,11 @@ func ScoreboardHandler(svc *service.ScoreboardService) http.HandlerFunc {
 		contestID := strings.TrimPrefix(r.URL.Path, "/api/scoreboard/")
 		log.Printf("获取比赛ID: %s", contestID)
 
-		// 收集所有筛选参数
-		filterParams := make(map[string]string)
-
-		// 获取筛选参数，兼容两种形式
-		// 第一种：直接使用filter参数
-		if filter := r.URL.Query().Get("filter"); filter != "" {
-			filterParams["filter"] = filter
-			log.Printf("使用filter参数: %s", filter)
-		}
-
-		// 第二种：使用旧版的group参数（向后兼容）
-		if group := r.URL.Query().Get("group"); group != "" {
-			filterParams["group"] = group
-			log.Printf("使用group参数: %s", group)
-		}
+		// 获取筛选参数
+		filter := r.URL.Query().Get("filter")
 
 		// 使用统一的筛选方法获取数据
-		results, contest, err := svc.GetScoreboardWithFilter(contestID, filterParams)
+		results, contest, err := svc.GetScoreboardWithFilter(contestID, filter)
 		if err != nil {
 			log.Printf("获取记分板数据失败: %v", err)
 			if strings.Contains(err.Error(), "not found") {

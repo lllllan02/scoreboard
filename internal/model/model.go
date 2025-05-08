@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 )
@@ -486,100 +485,22 @@ func (c *Contest) CalculateResults() ([]*Result, error) {
 		}
 	}
 
-	// 标记第一个解出的队伍
-	firstSolved := make(map[string]int64)
-	for _, result := range resultsMap {
-		for problemID, pr := range result.ProblemResults {
-			if pr.Solved && (!pr.IsFrozen) {
-				if firstTime, ok := firstSolved[problemID]; !ok || pr.SolvedTime < firstTime {
-					firstSolved[problemID] = pr.SolvedTime
-				}
-			}
-		}
-	}
-
-	// 设置first to solve标记
-	for _, result := range resultsMap {
-		for problemID, pr := range result.ProblemResults {
-			if pr.Solved && pr.SolvedTime == firstSolved[problemID] {
-				pr.FirstToSolve = true
-			}
-		}
-	}
-
-	// 按分数和罚时进行排序
+	// 将结果映射转换为列表
 	var resultsList []*Result
 	for _, result := range resultsMap {
 		resultsList = append(resultsList, result)
 	}
 
-	sort.Slice(resultsList, func(i, j int) bool {
-		// 首先按解题数量排序（降序）
-		if resultsList[i].Score != resultsList[j].Score {
-			return resultsList[i].Score > resultsList[j].Score
-		}
-
-		// 如果解题数量相同，按罚时排序（升序）
-		return resultsList[i].TotalTime < resultsList[j].TotalTime
-	})
-
-	// 设置排名
-	for i, result := range resultsList {
-		result.Rank = i + 1
-
-		// 处理并列排名
-		if i > 0 {
-			prev := resultsList[i-1]
-			if prev.Score == result.Score && prev.TotalTime == result.TotalTime {
-				result.Rank = prev.Rank
-			}
-		}
-	}
-
-	// 计算学校排名
-	schoolRankMap := make(map[string]int) // 学校名称 -> 排名
-	currentRank := 0                      // 当前学校排名
-
-	// 按照队伍排名顺序遍历，为每个不同的学校分配排名
-	for _, result := range resultsList {
-		school := result.Team.Organization
-		if school == "" {
-			continue // 跳过没有学校信息的队伍
-		}
-
-		// 如果这个学校已经有排名了，就跳过
-		if _, exists := schoolRankMap[school]; exists {
-			continue
-		}
-
-		// 为新学校分配排名
-		currentRank++
-		schoolRankMap[school] = currentRank
-	}
-
-	// 将学校排名保存到队伍结果中
-	for _, result := range resultsList {
-		school := result.Team.Organization
-		if rank, exists := schoolRankMap[school]; exists {
-			result.SchoolRank = rank
-		}
-	}
-
 	return resultsList, nil
 }
 
-// GetVisibleResults 获取当前可见的结果（考虑封榜）
+// GetVisibleResults 获取当前可见的结果（考虑封榜），不计算排名
 func (c *Contest) GetVisibleResults() ([]*Result, error) {
 	// 计算结果
 	results, err := c.CalculateResults()
 	if err != nil {
 		return nil, err
 	}
-
-	// 按排名排序
-	sort.Slice(results, func(i, j int) bool {
-		return results[i].Rank < results[j].Rank
-	})
 
 	return results, nil
 }

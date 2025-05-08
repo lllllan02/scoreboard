@@ -87,35 +87,38 @@ func (s *ScoreboardService) GetTimeInfo(contest *model.Contest) map[string]inter
 }
 
 // GetScoreboardWithFilter 统一处理所有筛选参数获取记分板数据
-func (s *ScoreboardService) GetScoreboardWithFilter(contestID string, filterParams map[string]string) ([]*model.Result, *model.Contest, error) {
+func (s *ScoreboardService) GetScoreboardWithFilter(contestID string, filter string) ([]*model.Result, *model.Contest, error) {
 	// 获取比赛信息
 	contest, err := s.GetContest(contestID)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// 首先获取所有可见结果
-	allResults, err := contest.GetVisibleResults()
+	// 获取所有可见结果（原始数据，不包含排名）
+	results, err := contest.GetVisibleResults()
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get results: %w", err)
 	}
 
-	// 获取筛选条件，优先使用filter参数
-	filter := filterParams["filter"]
-
-	// 如果没有filter参数，则检查是否有group参数（向后兼容）
-	if filter == "" {
-		filter = filterParams["group"]
+	// 进行筛选（如果需要）
+	if filter != "" && filter != "all" {
+		results, err = FilterResults(results, filter)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to filter results: %w", err)
+		}
 	}
 
-	// 如果没有筛选条件或筛选条件为"all"，直接返回所有结果
-	if filter == "" || filter == "all" {
-		return allResults, contest, nil
-	}
+	// 计算排名和首A
+	RecalculateRanking(results)
 
+	return results, contest, nil
+}
+
+// FilterResults 根据筛选条件过滤结果
+func FilterResults(results []*model.Result, filter string) ([]*model.Result, error) {
 	// 根据筛选条件过滤结果
 	var filteredResults []*model.Result
-	for _, result := range allResults {
+	for _, result := range results {
 		switch filter {
 		case "official": // 正式队伍
 			isOfficial := true
@@ -158,14 +161,11 @@ func (s *ScoreboardService) GetScoreboardWithFilter(contestID string, filterPara
 		}
 	}
 
-	// 重新计算筛选后的排名
-	recalculateRanking(filteredResults)
-
-	return filteredResults, contest, nil
+	return filteredResults, nil
 }
 
-// recalculateRanking 重新计算筛选后的排名、学校排名和首A
-func recalculateRanking(results []*model.Result) {
+// RecalculateRanking 重新计算筛选后的排名、学校排名和首A
+func RecalculateRanking(results []*model.Result) {
 	// 1. 排名计算
 	// 按解题数和罚时排序
 	sort.Slice(results, func(i, j int) bool {
