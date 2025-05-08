@@ -456,13 +456,21 @@ function loadScoreboardData(selectedTimeOrFilter) {
 function renderScoreboard(data) {
     console.log('开始渲染记分板，分离队名和学校');
     
+    // 清空并重新设置tableBody内容
     const tableBody = document.getElementById('scoreboard-body');
+    if (!tableBody) {
+        console.error('找不到scoreboard-body元素，无法渲染记分板');
+        return;
+    }
+    
     tableBody.innerHTML = '';
     
     const results = data.results;
     const problemIds = data.contest.problem_id;
     // 获取气球颜色配置
     const balloonColors = data.contest.balloon_color || [];
+    
+    console.log(`准备渲染记分板：${problemIds.length}道题目，${results.length}支队伍，${balloonColors.length}种气球颜色`);
     
     // 用于跟踪已经显示了排名的学校
     const displayedSchoolRanks = new Set();
@@ -484,8 +492,12 @@ function renderScoreboard(data) {
     // 统计每题的通过数量
     const problemStatsMap = calculateProblemStats(results, problemIds);
     
-    // 更新表头题目的颜色和通过数量
-    updateProblemColumnStyles(problemIds, balloonColors, problemStatsMap);
+    // 强制更新表头题目的颜色和通过数量，确保从统计视图切换回来时样式正确
+    try {
+        updateProblemColumnStyles(problemIds, balloonColors, problemStatsMap);
+    } catch (error) {
+        console.error('更新表头样式时出错:', error);
+    }
     
     results.forEach(result => {
         const row = document.createElement('tr');
@@ -665,30 +677,39 @@ function calculateProblemStats(results, problemIds) {
 
 // 更新表头题目的颜色样式
 function updateProblemColumnStyles(problemIds, balloonColors, problemStatsMap) {
+    // 获取表头行元素
     const headerRow = document.querySelector('#scoreboard-table thead tr');
-    if (!headerRow) return;
+    if (!headerRow) {
+        console.error('找不到表头行元素，无法更新题目样式');
+        return;
+    }
+    
+    console.log('正在更新排行榜表头样式，题目ID:', problemIds);
+    console.log('气球颜色配置:', balloonColors);
     
     // 从第6个单元格开始是题目列（前5个是排名、学校、队伍、解题数、罚时）
     const problemColumns = headerRow.querySelectorAll('th.problem-column');
+    console.log(`找到 ${problemColumns.length} 个题目列`);
     
+    // 如果没有找到题目列或者数量与problemIds不匹配，输出警告
+    if (problemColumns.length === 0) {
+        console.warn('找不到任何题目列元素');
+    } else if (problemColumns.length !== problemIds.length) {
+        console.warn(`题目列数量(${problemColumns.length})与题目ID数量(${problemIds.length})不匹配`);
+    }
+    
+    // 为每个题目列设置样式
     problemColumns.forEach((column, index) => {
+        // 获取题目ID，优先使用problemIds数组中的ID，否则从列标题中获取
         const problemId = index < problemIds.length ? problemIds[index] : column.textContent.trim();
-        const balloonColor = balloonColors && index < balloonColors.length ? balloonColors[index] || {} : {};
-        const problemStats = problemStatsMap ? problemStatsMap[problemId] : null;
+        console.log(`处理第 ${index + 1} 个题目: ${problemId}`);
         
-        // 更新表头内容，只添加通过数量
-        if (problemStats) {
-            const solvedCount = problemStats.solvedCount;
-            
-            // 创建新的表头内容，只显示题号和通过数量
-            column.innerHTML = `
-                <div>${problemId}</div>
-                <div class="small problem-stats">${solvedCount}</div>
-            `;
-        } else {
-            // 如果没有统计数据，至少保留题号
-            column.innerHTML = `<div>${problemId}</div>`;
-        }
+        // 获取对应的气球颜色配置
+        const balloonColor = balloonColors && index < balloonColors.length ? balloonColors[index] || {} : {};
+        
+        // 获取题目统计数据（如解题数）
+        const problemStats = problemStatsMap ? problemStatsMap[problemId] : null;
+        console.log(`题目 ${problemId} 统计数据:`, problemStats);
         
         // 默认使用深绿色作为题目列头背景
         let backgroundColor = '#4CAF50';
@@ -696,18 +717,36 @@ function updateProblemColumnStyles(problemIds, balloonColors, problemStatsMap) {
         // 如果后端提供了气球颜色，则使用后端提供的颜色
         if (balloonColor.background_color) {
             backgroundColor = balloonColor.background_color;
+            console.log(`使用后端提供的气球颜色: ${backgroundColor}`);
+        } else {
+            console.log(`使用默认颜色: ${backgroundColor}`);
         }
         
         // 使用灰度级别公式判断文字颜色
         const textColor = getContrastColor(backgroundColor);
+        console.log(`计算得到的文字颜色: ${textColor}`);
         
-        // 构建样式字符串
-        let styleString = `background-color: ${backgroundColor} !important;`;
+        // 设置完整的样式字符串，同时包含背景色和文字颜色
+        let styleString = `background-color: ${backgroundColor} !important; color: ${textColor} !important;`;
         
-        // 如果后端明确指定了文字颜色，优先使用后端指定的，否则使用自动计算的对比色
-        styleString += ` color: ${textColor} !important;`;
+        // 更新表头内容，题号和通过数量都使用继承的文字颜色
+        if (problemStats) {
+            const solvedCount = problemStats.solvedCount;
+            
+            // 创建新的表头内容，题号和通过数量都使用继承的文字颜色
+            column.innerHTML = `
+                <div style="color: inherit;">${problemId}</div>
+                <div class="small problem-stats" style="color: inherit;">${solvedCount}</div>
+            `;
+            console.log(`更新题目 ${problemId} 内容，包含解题数: ${solvedCount}`);
+        } else {
+            // 如果没有统计数据，至少保留题号
+            column.innerHTML = `<div style="color: inherit;">${problemId}</div>`;
+            console.log(`更新题目 ${problemId} 内容，无解题数据`);
+        }
         
-        // 一次性设置样式，避免多次覆盖
+        // 设置样式
+        console.log(`为题目 ${problemId} 设置样式: ${styleString}`);
         column.setAttribute('style', styleString);
         
         // 确保设置了所有必要的类
@@ -715,8 +754,10 @@ function updateProblemColumnStyles(problemIds, balloonColors, problemStatsMap) {
         column.setAttribute('scope', 'col');
         
         // 添加调试信息
-        console.log(`题目 ${problemId}: 背景色=${backgroundColor}, 文字颜色=${textColor}`);
+        console.log(`题目 ${problemId} 样式设置完成: 背景色=${backgroundColor}, 文字颜色=${textColor}`);
     });
+    
+    console.log('排行榜表头样式更新完成');
 }
 
 // 设置组别筛选
@@ -1098,6 +1139,39 @@ function showStatistics() {
     
     console.log('正在请求统计数据，URL:', apiUrl);
     
+    // 在调用统计接口前确保我们有排行榜数据（包含气球颜色信息）
+    if (!scoreboardData || !scoreboardData.contest || !scoreboardData.contest.balloon_color) {
+        console.log('尚未加载排行榜数据，先加载排行榜获取气球颜色信息');
+        
+        // 首先加载排行榜数据以获取气球颜色信息
+        fetch(`/api/scoreboard/${contestId}${urlParams.toString() ? '?' + urlParams.toString() : ''}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('加载排行榜数据失败');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // 保存排行榜数据
+                scoreboardData = data;
+                console.log('已获取排行榜数据，包含气球颜色信息:', 
+                    scoreboardData.contest.balloon_color);
+                
+                // 然后继续加载统计数据
+                loadStatisticsData(apiUrl, filter, scoreboardContainer);
+            })
+            .catch(error => {
+                console.error('获取排行榜数据失败:', error);
+                loadStatisticsData(apiUrl, filter, scoreboardContainer);
+            });
+    } else {
+        // 已有排行榜数据，直接加载统计数据
+        loadStatisticsData(apiUrl, filter, scoreboardContainer);
+    }
+}
+
+// 加载统计数据（从showStatistics拆分出来）
+function loadStatisticsData(apiUrl, filter, container) {
     // 发送请求到后端
     fetch(apiUrl)
         .then(response => {
@@ -1108,7 +1182,7 @@ function showStatistics() {
         })
         .then(data => {
             // 显示统计数据
-            displayStatistics(data, filter, scoreboardContainer);
+            displayStatistics(data, filter, container);
             // 重置加载标记
             window.loadingStatistics = false;
         })
@@ -1116,7 +1190,7 @@ function showStatistics() {
             console.error('统计请求失败:', error);
             
             // 显示错误信息
-            scoreboardContainer.innerHTML = `
+            container.innerHTML = `
                 <div class="alert alert-danger my-5">
                     <i class="bi bi-exclamation-triangle me-2"></i>
                     获取统计数据失败: ${error.message}
@@ -1124,6 +1198,8 @@ function showStatistics() {
             `;
             
             // 恢复按钮状态
+            const statisticsBtn = document.getElementById('statisticsBtn');
+            const scoreboardBtn = document.getElementById('scoreboardBtn');
             if (statisticsBtn) {
                 statisticsBtn.style.display = 'inline-block';
                 statisticsBtn.classList.remove('btn-outline-primary');
@@ -1141,12 +1217,6 @@ function showStatistics() {
         });
 }
 
-// 显示统计数据
-function displayStatistics(data, filter, container) {
-    // 调用内部实现函数
-    window.internalDisplayStatistics(data, filter, container);
-}
-
 // 生成卡片式热力图（图二样式）
 function generateCardHeatmap(problemStats) {
     if (!problemStats || Object.keys(problemStats).length === 0) {
@@ -1159,6 +1229,29 @@ function generateCardHeatmap(problemStats) {
     // 按题目ID排序
     const sortedProblemIds = Object.keys(problemStats).sort();
     
+    // 获取气球颜色配置（如果存在）和题目ID列表
+    let balloonColors = [];
+    let problemIds = [];
+    
+    if (scoreboardData && scoreboardData.contest) {
+        balloonColors = scoreboardData.contest.balloon_color || [];
+        problemIds = scoreboardData.contest.problem_id || [];
+        console.log('热力图使用气球颜色:', balloonColors);
+    } else {
+        console.warn('无法获取气球颜色信息，将使用默认颜色');
+    }
+    
+    // 创建题目ID到气球颜色的映射
+    const problemColorMap = {};
+    if (problemIds.length > 0 && balloonColors.length > 0) {
+        problemIds.forEach((id, index) => {
+            if (index < balloonColors.length && balloonColors[index]) {
+                problemColorMap[id] = balloonColors[index];
+                console.log(`题目 ${id} 的气球颜色:`, balloonColors[index].background_color);
+            }
+        });
+    }
+    
     // 为每个题目生成卡片式热力图
     sortedProblemIds.forEach(problemId => {
         const stats = problemStats[problemId];
@@ -1170,10 +1263,24 @@ function generateCardHeatmap(problemStats) {
         // 计算通过率
         const acceptRate = totalSubmissions > 0 ? (stats.accepted / totalSubmissions * 100).toFixed(1) : '0.0';
         
-        // 创建题目卡片 - 完全匹配新截图
+        // 设置背景颜色，默认为绿色
+        let backgroundColor = '#4CAF50';
+        
+        // 如果题目ID在映射中有对应的气球颜色，则使用该颜色
+        if (problemColorMap[problemId] && problemColorMap[problemId].background_color) {
+            backgroundColor = problemColorMap[problemId].background_color;
+            console.log(`使用题目 ${problemId} 的气球颜色: ${backgroundColor}`);
+        } else {
+            console.log(`题目 ${problemId} 未找到气球颜色，使用默认颜色: ${backgroundColor}`);
+        }
+        
+        // 使用灰度级别公式判断文字颜色
+        const textColor = getContrastColor(backgroundColor);
+        
+        // 创建题目卡片 - 匹配排行榜颜色
         heatmapHtml += `
             <div class="problem-card">
-                <div class="problem-badge" style="background-color: #4CAF50;">${problemId}</div>
+                <div class="problem-badge" style="background-color: ${backgroundColor}; color: ${textColor};">${problemId}</div>
                 
                 <div style="width: 100%; padding: 0 15px; margin-top: 10px; text-align: left;">
                     <div class="stat-row">
@@ -1192,12 +1299,10 @@ function generateCardHeatmap(problemStats) {
     return heatmapHtml;
 }
 
-// 生成提交方块 - 不再使用，但保留函数以防需要恢复
-function generateSubmissionBlocks(count, type) {
-    if (count <= 0) return '';
-    
-    // 根据截图现在不需要显示方块，返回空字符串
-    return '';
+// 显示统计数据
+function displayStatistics(data, filter, container) {
+    // 调用内部实现函数
+    window.internalDisplayStatistics(data, filter, container);
 }
 
 // 确保关键函数在全局范围内可用
