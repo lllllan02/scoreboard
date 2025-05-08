@@ -710,7 +710,7 @@
                 initialStyle.remove();
             }
             
-            // 从URL中获取当前筛选条件
+            // 从URL中获取当前筛选条件和视图类型
             const url = new URL(window.location.href);
             const urlFilter = url.searchParams.get('filter');
             const urlView = url.searchParams.get('view');
@@ -720,11 +720,12 @@
             // 验证并设置筛选类型
             const filterType = urlFilter && validFilters.includes(urlFilter) ? urlFilter : 'all';
             
-            // 更新激活的筛选按钮 - 确保先移除所有active类
+            // 确保只有一个按钮激活
             document.querySelectorAll('.filter-buttons .btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            // 然后只添加一个active类
+            
+            // 然后设置正确的按钮为激活状态
             const activeBtn = document.querySelector(`.filter-buttons .btn[data-filter="${filterType}"]`);
             if (activeBtn) {
                 activeBtn.classList.add('active');
@@ -767,8 +768,8 @@
                     const activeFilter = document.querySelector('.filter-buttons .btn.active');
                     const filterType = activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
                     
-                    // 更新URL参数，移除视图参数
-                    updateURLWithFilter(filterType);
+                    // 更新URL参数，明确删除视图参数
+                    updateURLWithFilter(filterType, '');
                     
                     // 切换按钮显示状态
                     const statisticsBtn = document.getElementById('statisticsBtn');
@@ -895,10 +896,12 @@
                 });
             }
             
-            // 检查URL中的视图参数，如果是统计视图则显示统计界面
+            // 检查是否应该显示统计页面
             if (urlView === 'statistics') {
                 if (typeof window.showStatistics === 'function') {
-                    window.showStatistics();
+                    setTimeout(() => {
+                        window.showStatistics();
+                    }, 0);
                 }
             } else {
                 // 初始化排行榜数据
@@ -1006,10 +1009,14 @@
                 filterType = 'all';
             }
             
-            // 更新URL，添加筛选参数
             // 检查当前视图是否为统计视图
             const statisticsView = document.querySelector('.statistics-container');
-            if (statisticsView) {
+            const url = new URL(window.location.href);
+            // 获取当前URL中是否有view=statistics参数
+            const urlView = url.searchParams.get('view');
+            const isStatisticsView = statisticsView || urlView === 'statistics';
+            
+            if (isStatisticsView) {
                 // 在统计视图中更新URL参数
                 updateURLWithFilter(filterType, 'statistics');
                 
@@ -1068,14 +1075,19 @@
             }
             
             // 更新视图参数（如果提供）
-            if (view) {
+            if (view === '') {
+                // 如果传入空字符串，明确要求删除view参数
+                params.delete('view');
+            } else if (view) {
+                // 如果传入非空字符串，设置view参数
                 params.set('view', view);
-            } else if (document.querySelector('.statistics-container')) {
-                // 如果当前是统计视图，保持该参数
-                params.set('view', 'statistics');
-            } else if (!view && params.has('view')) {
-                // 如果没有提供view参数但URL中有，且当前不是统计视图，则删除
-                if (!document.querySelector('.statistics-container')) {
+            } else {
+                // 如果当前URL中有view参数，且没有明确要求删除，则保持不变
+                const currentView = params.get('view');
+                if (currentView && view !== '') {
+                    // 保留当前的view参数
+                } else {
+                    // 否则删除view参数
                     params.delete('view');
                 }
             }
@@ -1175,71 +1187,6 @@
                 }, 3000);
             }
         }
-        
-        // 页面加载后初始化
-        document.addEventListener('DOMContentLoaded', function() {
-            // 移除初始样式
-            const initialStyle = document.getElementById('initial-filter-style');
-            if (initialStyle) {
-                initialStyle.remove();
-            }
-            
-            // 确保排行榜相关的全局变量已经初始化
-            if (!window.contestInfo) {
-                // 从隐藏的数据元素中获取值
-                const contestDataElem = document.getElementById('contest-data');
-                if (contestDataElem) {
-                    window.contestInfo = {
-                        id: contestDataElem.getAttribute('data-contest-id') || '',
-                        startTime: parseInt(contestDataElem.getAttribute('data-start-time') || '0'),
-                        endTime: parseInt(contestDataElem.getAttribute('data-end-time') || '0'),
-                        currentStatus: contestDataElem.getAttribute('data-status') || ''
-                    };
-                } else if (typeof contestInfo !== 'undefined') {
-                    // 如果只在全局作用域有contestInfo，将其赋值给window对象
-                    window.contestInfo = contestInfo;
-                } else {
-                    console.warn('无法获取比赛信息，部分功能可能不可用');
-                }
-            }
-            
-            // 从URL中获取当前筛选条件
-            const url = new URL(window.location.href);
-            const urlFilter = url.searchParams.get('filter');
-            const urlView = url.searchParams.get('view');
-            
-            // 有效的筛选类型列表
-            const validFilters = ['all', 'official', 'unofficial', 'girls', 'undergraduate', 'special'];
-            // 验证并设置筛选类型
-            const filterType = urlFilter && validFilters.includes(urlFilter) ? urlFilter : 'all';
-            
-            // 确保只有一个按钮激活
-            document.querySelectorAll('.filter-buttons .btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            
-            // 然后设置正确的按钮为激活状态
-            const activeBtn = document.querySelector(`.filter-buttons .btn[data-filter="${filterType}"]`);
-            if (activeBtn) {
-                activeBtn.classList.add('active');
-            }
-            
-            // 设置筛选按钮点击事件
-            document.querySelectorAll('.filter-buttons .btn').forEach(button => {
-                button.addEventListener('click', function() {
-                    // 更新按钮状态
-                    document.querySelectorAll('.filter-buttons .btn').forEach(btn => {
-                        btn.classList.remove('active');
-                    });
-                    
-                    this.classList.add('active');
-                    
-                    // 获取筛选类型并调用筛选函数
-                    const filterType = this.getAttribute('data-filter');
-                    filterTeams(filterType);
-                });
-            });
-        });
     </script>
 </body>
 </html> 

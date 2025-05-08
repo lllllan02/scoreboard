@@ -1229,8 +1229,12 @@ function showStatistics() {
             apiUrl += '?' + urlParams.toString();
         }
         
-        // 更新URL，保存当前视图和筛选条件
-        updateURLParams(filter, 'statistics');
+        // 更新URL，始终保存当前视图为statistics和筛选条件
+        if (typeof window.updateURLWithFilter === 'function') {
+            window.updateURLWithFilter(filter, 'statistics');
+        } else {
+            updateURLParams(filter, 'statistics');
+        }
         
         console.log('正在请求统计数据，URL:', apiUrl);
         
@@ -1312,7 +1316,10 @@ function updateURLParams(filter, view) {
     }
     
     // 更新视图参数
-    if (view) {
+    if (view === '') {
+        // 如果传入空字符串，明确要求删除view参数
+        params.delete('view');
+    } else if (view) {
         params.set('view', view);
     } else {
         params.delete('view');
