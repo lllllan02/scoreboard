@@ -70,6 +70,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // 格式化显示比赛时间
 function formatContestTimes() {
+    // 确保contestInfo存在
+    if (!window.contestInfo) {
+        console.warn('contestInfo未定义，尝试从DOM元素获取');
+        const contestDataElem = document.getElementById('contest-data');
+        if (contestDataElem) {
+            window.contestInfo = {
+                id: contestDataElem.getAttribute('data-contest-id') || '',
+                startTime: parseInt(contestDataElem.getAttribute('data-start-time') || '0'),
+                endTime: parseInt(contestDataElem.getAttribute('data-end-time') || '0'),
+                currentStatus: contestDataElem.getAttribute('data-status') || ''
+            };
+            console.log('从DOM元素获取的contestInfo:', window.contestInfo);
+        } else {
+            console.error('无法获取比赛信息，无法格式化比赛时间');
+            return;
+        }
+    }
+    
     // 获取开始和结束时间戳（秒）
     const startTime = parseInt(contestInfo.startTime);
     const endTime = parseInt(contestInfo.endTime);
@@ -79,8 +97,16 @@ function formatContestTimes() {
     const endFormatted = formatDateTime(endTime);
     
     // 更新显示
-    document.getElementById('start-time-fmt').textContent = startFormatted;
-    document.getElementById('end-time-fmt').textContent = endFormatted;
+    const startTimeElement = document.getElementById('start-time-fmt');
+    const endTimeElement = document.getElementById('end-time-fmt');
+    
+    if (startTimeElement) {
+        startTimeElement.textContent = startFormatted;
+    }
+    
+    if (endTimeElement) {
+        endTimeElement.textContent = endFormatted;
+    }
 }
 
 // 格式化为详细日期时间
@@ -113,6 +139,24 @@ function initProgressBar() {
     if (!progressBar || !progressHandle || !progressIndicator) {
         console.log('进度条元素未找到，跳过初始化');
         return;
+    }
+    
+    // 确保contestInfo存在
+    if (!window.contestInfo) {
+        console.warn('contestInfo未定义，尝试从DOM元素获取');
+        const contestDataElem = document.getElementById('contest-data');
+        if (contestDataElem) {
+            window.contestInfo = {
+                id: contestDataElem.getAttribute('data-contest-id') || '',
+                startTime: parseInt(contestDataElem.getAttribute('data-start-time') || '0'),
+                endTime: parseInt(contestDataElem.getAttribute('data-end-time') || '0'),
+                currentStatus: contestDataElem.getAttribute('data-status') || ''
+            };
+            console.log('从DOM元素获取的contestInfo:', window.contestInfo);
+        } else {
+            console.error('无法获取比赛信息，进度条初始化失败');
+            return;
+        }
     }
 
     // 计算比赛总时长（秒）
@@ -1066,123 +1110,201 @@ function calculateTimeFromProgress() {
 function showStatistics() {
     console.log('正在显示统计信息');
     
-    // 防止重复调用
-    if (window.loadingStatistics) {
-        console.log('正在加载统计数据，忽略重复调用');
-        return;
+    try {
+        // 防止重复调用
+        if (window.loadingStatistics) {
+            console.log('正在加载统计数据，忽略重复调用');
+            return;
+        }
+        
+        // 设置正在加载标记
+        window.loadingStatistics = true;
+        
+        // 获取排行榜表格容器
+        const scoreboardContainer = document.querySelector('.card-body .table-responsive');
+        if (!scoreboardContainer) {
+            console.error('找不到排行榜容器');
+            showNotification('找不到排行榜容器', 'danger');
+            window.loadingStatistics = false;
+            return;
+        }
+        
+        // 显示加载中状态
+        scoreboardContainer.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary mb-3" role="status">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+                <p class="mb-0">正在加载统计数据...</p>
+            </div>
+        `;
+        
+        // 切换按钮显示状态
+        const statisticsBtn = document.getElementById('statisticsBtn');
+        const scoreboardBtn = document.getElementById('scoreboardBtn');
+        if (statisticsBtn) {
+            statisticsBtn.style.display = 'none';
+            statisticsBtn.classList.remove('btn-primary');
+            statisticsBtn.classList.add('btn-outline-primary');
+        }
+        if (scoreboardBtn) {
+            scoreboardBtn.style.display = 'inline-block';
+            scoreboardBtn.classList.remove('btn-outline-primary');
+            scoreboardBtn.classList.add('btn-primary');
+        }
+        
+        // 构建API请求URL，使用原有API接口，增加filter参数
+        let contestId = contestInfo && contestInfo.id;
+        
+        // 如果contestInfo不存在或没有id，尝试从DOM元素获取
+        if (!contestId) {
+            const contestDataElem = document.getElementById('contest-data');
+            if (contestDataElem) {
+                contestId = contestDataElem.getAttribute('data-contest-id');
+                console.log('从DOM元素获取contestId:', contestId);
+            }
+        }
+        
+        // 如果仍然没有获取到contestId，显示错误
+        if (!contestId) {
+            console.error('无法获取比赛ID');
+            scoreboardContainer.innerHTML = `
+                <div class="alert alert-danger my-5">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    获取统计数据失败: id is not defined（无法获取比赛ID）
+                </div>
+                <div class="text-center mt-3">
+                    <button class="btn btn-primary" onclick="window.location.reload()">刷新页面</button>
+                </div>
+            `;
+            window.loadingStatistics = false;
+            return;
+        }
+        
+        let apiUrl = `/api/statistics/${contestId}`;
+        
+        // 获取当前激活的筛选按钮
+        const activeFilter = document.querySelector('.filter-buttons .btn.active');
+        let filter = 'all';
+        if (activeFilter) {
+            filter = activeFilter.getAttribute('data-filter');
+        }
+        
+        // 有效的筛选类型列表
+        const validFilters = ['all', 'official', 'unofficial', 'girls', 'undergraduate', 'special'];
+        
+        // 如果筛选类型无效，使用默认值
+        if (!validFilters.includes(filter)) {
+            console.warn(`无效的筛选类型: ${filter}，使用默认值 'all'`);
+            filter = 'all';
+        }
+        
+        // 添加筛选参数
+        const urlParams = new URLSearchParams();
+        if (filter !== 'all') {
+            urlParams.append('filter', filter);
+        }
+        if (urlParams.toString()) {
+            apiUrl += '?' + urlParams.toString();
+        }
+        
+        console.log('正在请求统计数据，URL:', apiUrl);
+        
+        // 在调用统计接口前确保我们有排行榜数据（包含气球颜色信息）
+        if (!scoreboardData || !scoreboardData.contest || !scoreboardData.contest.balloon_color) {
+            console.log('尚未加载排行榜数据，先加载排行榜获取气球颜色信息');
+            
+            // 首先加载排行榜数据以获取气球颜色信息
+            fetch(`/api/scoreboard/${contestId}${urlParams.toString() ? '?' + urlParams.toString() : ''}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('加载排行榜数据失败');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // 保存排行榜数据
+                    scoreboardData = data;
+                    console.log('已获取排行榜数据，包含气球颜色信息:', 
+                        scoreboardData.contest.balloon_color);
+                    
+                    // 然后继续加载统计数据
+                    loadStatisticsData(apiUrl, filter, scoreboardContainer);
+                })
+                .catch(error => {
+                    console.error('获取排行榜数据失败:', error);
+                    loadStatisticsData(apiUrl, filter, scoreboardContainer);
+                });
+        } else {
+            // 已有排行榜数据，直接加载统计数据
+            loadStatisticsData(apiUrl, filter, scoreboardContainer);
+        }
+    } catch (error) {
+        console.error('显示统计信息时发生错误:', error);
+        
+        // 获取排行榜表格容器
+        const container = document.querySelector('.card-body .table-responsive');
+        if (container) {
+            container.innerHTML = `
+                <div class="alert alert-danger my-5">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    显示统计信息时发生错误: ${error.message}
+                </div>
+                <div class="text-center mt-3">
+                    <button class="btn btn-primary" onclick="window.location.reload()">刷新页面</button>
+                </div>
+            `;
+        }
+        
+        // 恢复按钮状态
+        const statisticsBtn = document.getElementById('statisticsBtn');
+        if (statisticsBtn) {
+            statisticsBtn.style.display = 'inline-block';
+            statisticsBtn.classList.remove('btn-outline-primary');
+            statisticsBtn.classList.add('btn-primary');
+        }
+        
+        window.loadingStatistics = false;
     }
+}
+
+// 加载统计数据
+function loadStatisticsData(apiUrl, filter, container) {
+    console.log(`正在加载统计数据, API: ${apiUrl}, 筛选: ${filter}`);
     
-    // 设置正在加载标记
-    window.loadingStatistics = true;
-    
-    // 获取排行榜表格容器
-    const scoreboardContainer = document.querySelector('.card-body .table-responsive');
-    if (!scoreboardContainer) {
-        console.error('找不到排行榜容器');
-        showNotification('找不到排行榜容器', 'danger');
+    // 如果没有提供有效的apiUrl，显示错误并返回
+    if (!apiUrl) {
+        console.error('API URL未定义');
+        container.innerHTML = `
+            <div class="alert alert-danger my-5">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                获取统计数据失败: API URL未定义
+            </div>
+            <div class="text-center mt-3">
+                <button class="btn btn-primary" onclick="window.location.reload()">刷新页面</button>
+            </div>
+        `;
         window.loadingStatistics = false;
         return;
     }
     
-    // 显示加载中状态
-    scoreboardContainer.innerHTML = `
-        <div class="text-center py-5">
-            <div class="spinner-border text-primary mb-3" role="status">
-                <span class="visually-hidden">加载中...</span>
-            </div>
-            <p class="mb-0">正在加载统计数据...</p>
-        </div>
-    `;
-    
-    // 切换按钮显示状态
-    const statisticsBtn = document.getElementById('statisticsBtn');
-    const scoreboardBtn = document.getElementById('scoreboardBtn');
-    if (statisticsBtn) {
-        statisticsBtn.style.display = 'none';
-        statisticsBtn.classList.remove('btn-primary');
-        statisticsBtn.classList.add('btn-outline-primary');
-    }
-    if (scoreboardBtn) {
-        scoreboardBtn.style.display = 'inline-block';
-        scoreboardBtn.classList.remove('btn-outline-primary');
-        scoreboardBtn.classList.add('btn-primary');
-    }
-    
-    // 构建API请求URL，使用原有API接口，增加filter参数
-    const contestId = contestInfo.id;
-    let apiUrl = `/api/statistics/${contestId}`;
-    
-    // 获取当前激活的筛选按钮
-    const activeFilter = document.querySelector('.filter-buttons .btn.active');
-    let filter = 'all';
-    if (activeFilter) {
-        filter = activeFilter.getAttribute('data-filter');
-    }
-    
-    // 有效的筛选类型列表
-    const validFilters = ['all', 'official', 'unofficial', 'girls', 'undergraduate', 'special'];
-    
-    // 如果筛选类型无效，使用默认值
-    if (!validFilters.includes(filter)) {
-        console.warn(`无效的筛选类型: ${filter}，使用默认值 'all'`);
-        filter = 'all';
-    }
-    
-    // 添加筛选参数
-    const urlParams = new URLSearchParams();
-    if (filter !== 'all') {
-        urlParams.append('filter', filter);
-    }
-    if (urlParams.toString()) {
-        apiUrl += '?' + urlParams.toString();
-    }
-    
-    console.log('正在请求统计数据，URL:', apiUrl);
-    
-    // 在调用统计接口前确保我们有排行榜数据（包含气球颜色信息）
-    if (!scoreboardData || !scoreboardData.contest || !scoreboardData.contest.balloon_color) {
-        console.log('尚未加载排行榜数据，先加载排行榜获取气球颜色信息');
-        
-        // 首先加载排行榜数据以获取气球颜色信息
-        fetch(`/api/scoreboard/${contestId}${urlParams.toString() ? '?' + urlParams.toString() : ''}`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('加载排行榜数据失败');
-                }
-                return response.json();
-            })
-            .then(data => {
-                // 保存排行榜数据
-                scoreboardData = data;
-                console.log('已获取排行榜数据，包含气球颜色信息:', 
-                    scoreboardData.contest.balloon_color);
-                
-                // 然后继续加载统计数据
-                loadStatisticsData(apiUrl, filter, scoreboardContainer);
-            })
-            .catch(error => {
-                console.error('获取排行榜数据失败:', error);
-                loadStatisticsData(apiUrl, filter, scoreboardContainer);
-            });
-    } else {
-        // 已有排行榜数据，直接加载统计数据
-        loadStatisticsData(apiUrl, filter, scoreboardContainer);
-    }
-}
-
-// 加载统计数据（从showStatistics拆分出来）
-function loadStatisticsData(apiUrl, filter, container) {
-    // 发送请求到后端
     fetch(apiUrl)
         .then(response => {
             if (!response.ok) {
-                throw new Error('网络请求失败');
+                throw new Error(`HTTP错误 ${response.status}: ${response.statusText}`);
             }
             return response.json();
         })
         .then(data => {
-            // 显示统计数据
-            displayStatistics(data, filter, container);
+            console.log('统计数据加载成功:', data);
+            
+            // 检查data是否包含problem_stats
+            if (!data || !data.problem_stats) {
+                throw new Error('返回的数据格式不正确，缺少problem_stats字段');
+            }
+            
+            // 显示统计数据，使用内部函数实现
+            window.internalDisplayStatistics(data, filter, container);
             // 重置加载标记
             window.loadingStatistics = false;
         })
@@ -1194,6 +1316,10 @@ function loadStatisticsData(apiUrl, filter, container) {
                 <div class="alert alert-danger my-5">
                     <i class="bi bi-exclamation-triangle me-2"></i>
                     获取统计数据失败: ${error.message}
+                </div>
+                <div class="text-center mt-3">
+                    <button class="btn btn-primary" onclick="window.showStatistics()">重试</button>
+                    <button class="btn btn-outline-secondary ms-2" onclick="window.location.reload()">刷新页面</button>
                 </div>
             `;
             
@@ -1220,89 +1346,330 @@ function loadStatisticsData(apiUrl, filter, container) {
 // 生成卡片式热力图（图二样式）
 function generateCardHeatmap(problemStats) {
     if (!problemStats || Object.keys(problemStats).length === 0) {
+        console.warn('没有可用的题目统计数据');
         return '<div class="alert alert-warning">没有可用的题目统计数据</div>';
     }
 
-    // 创建热力图容器
-    let heatmapHtml = '<div class="card-heatmap-container">';
-    
-    // 按题目ID排序
-    const sortedProblemIds = Object.keys(problemStats).sort();
-    
-    // 获取气球颜色配置（如果存在）和题目ID列表
-    let balloonColors = [];
-    let problemIds = [];
-    
-    if (scoreboardData && scoreboardData.contest) {
-        balloonColors = scoreboardData.contest.balloon_color || [];
-        problemIds = scoreboardData.contest.problem_id || [];
-        console.log('热力图使用气球颜色:', balloonColors);
-    } else {
-        console.warn('无法获取气球颜色信息，将使用默认颜色');
-    }
-    
-    // 创建题目ID到气球颜色的映射
-    const problemColorMap = {};
-    if (problemIds.length > 0 && balloonColors.length > 0) {
-        problemIds.forEach((id, index) => {
-            if (index < balloonColors.length && balloonColors[index]) {
-                problemColorMap[id] = balloonColors[index];
-                console.log(`题目 ${id} 的气球颜色:`, balloonColors[index].background_color);
-            }
-        });
-    }
-    
-    // 为每个题目生成卡片式热力图
-    sortedProblemIds.forEach(problemId => {
-        const stats = problemStats[problemId];
+    try {
+        // 创建热力图容器
+        let heatmapHtml = '<div class="card-heatmap-container">';
         
-        // 计算总提交次数
-        const totalSubmissions = stats.accepted + stats.rejected + stats.pending;
-        if (totalSubmissions === 0) return; // 跳过无提交的题目
+        // 按题目ID排序
+        const sortedProblemIds = Object.keys(problemStats).sort();
         
-        // 计算通过率
-        const acceptRate = totalSubmissions > 0 ? (stats.accepted / totalSubmissions * 100).toFixed(1) : '0.0';
+        // 获取气球颜色配置（如果存在）和题目ID列表
+        let balloonColors = [];
+        let problemIds = [];
         
-        // 设置背景颜色，默认为绿色
-        let backgroundColor = '#4CAF50';
-        
-        // 如果题目ID在映射中有对应的气球颜色，则使用该颜色
-        if (problemColorMap[problemId] && problemColorMap[problemId].background_color) {
-            backgroundColor = problemColorMap[problemId].background_color;
-            console.log(`使用题目 ${problemId} 的气球颜色: ${backgroundColor}`);
+        if (scoreboardData && scoreboardData.contest) {
+            balloonColors = scoreboardData.contest.balloon_color || [];
+            problemIds = scoreboardData.contest.problem_id || [];
+            console.log('热力图使用气球颜色:', balloonColors);
         } else {
-            console.log(`题目 ${problemId} 未找到气球颜色，使用默认颜色: ${backgroundColor}`);
+            console.warn('无法获取气球颜色信息，将使用默认颜色');
         }
         
-        // 使用灰度级别公式判断文字颜色
-        const textColor = getContrastColor(backgroundColor);
+        // 创建题目ID到气球颜色的映射
+        const problemColorMap = {};
+        if (problemIds.length > 0 && balloonColors.length > 0) {
+            problemIds.forEach((id, index) => {
+                if (index < balloonColors.length && balloonColors[index]) {
+                    problemColorMap[id] = balloonColors[index];
+                }
+            });
+        }
         
-        // 创建题目卡片 - 匹配排行榜颜色
-        heatmapHtml += `
-            <div class="problem-card">
-                <div class="problem-badge" style="background-color: ${backgroundColor}; color: ${textColor};">${problemId}</div>
+        // 为每个题目生成卡片式热力图
+        sortedProblemIds.forEach(problemId => {
+            try {
+                const stats = problemStats[problemId];
                 
-                <div style="width: 100%; padding: 0 15px; margin-top: 10px; text-align: left;">
-                    <div class="stat-row">
-                        <span class="stat-percent">${acceptRate}%</span>
+                // 计算提交数据
+                const acceptedCount = stats.accepted || 0;
+                const rejectedCount = stats.rejected || 0;
+                const pendingCount = stats.pending || 0;
+                const totalSubmissions = acceptedCount + rejectedCount + pendingCount;
+                
+                if (totalSubmissions === 0) return; // 跳过无提交的题目
+                
+                // 设置背景颜色，默认为绿色
+                let backgroundColor = '#4CAF50';
+                
+                // 如果题目ID在映射中有对应的气球颜色，则使用该颜色
+                if (problemColorMap[problemId] && problemColorMap[problemId].background_color) {
+                    backgroundColor = problemColorMap[problemId].background_color;
+                }
+                
+                // 使用灰度级别公式判断文字颜色
+                const textColor = getContrastColor(backgroundColor);
+                
+                // 生成点阵热力图
+                // 分别为AC和非AC创建20个格子的点阵图
+                // 计算每种状态的点的数量，最多显示20个
+                const maxDotsCount = 20; 
+                const dotsPerRow = 10; // 每行10个点
+                
+                // 计算每种状态最多显示多少个点
+                const acceptedDotsCount = Math.min(acceptedCount, maxDotsCount);
+                const rejectedDotsCount = Math.min(rejectedCount, maxDotsCount);
+                
+                // 生成接受的点 - 按照每行10个的方式排列
+                let acceptedDots = '';
+                for (let i = 0; i < maxDotsCount; i++) {
+                    // 每10个点添加一个换行
+                    if (i > 0 && i % dotsPerRow === 0) {
+                        acceptedDots += '</div><div class="dots-subrow">';
+                    }
+                    
+                    // 如果是第一个点，添加行开始标签
+                    if (i === 0) {
+                        acceptedDots += '<div class="dots-subrow">';
+                    }
+                    
+                    if (i < acceptedDotsCount) {
+                        acceptedDots += '<span class="dot accepted"></span>';
+                    } else {
+                        acceptedDots += '<span class="dot placeholder"></span>';
+                    }
+                    
+                    // 如果是最后一个点，添加行结束标签
+                    if (i === maxDotsCount - 1) {
+                        acceptedDots += '</div>';
+                    }
+                }
+                
+                // 生成拒绝的点 - 按照每行10个的方式排列
+                let rejectedDots = '';
+                for (let i = 0; i < maxDotsCount; i++) {
+                    // 每10个点添加一个换行
+                    if (i > 0 && i % dotsPerRow === 0) {
+                        rejectedDots += '</div><div class="dots-subrow">';
+                    }
+                    
+                    // 如果是第一个点，添加行开始标签
+                    if (i === 0) {
+                        rejectedDots += '<div class="dots-subrow">';
+                    }
+                    
+                    if (i < rejectedDotsCount) {
+                        rejectedDots += '<span class="dot rejected"></span>';
+                    } else {
+                        rejectedDots += '<span class="dot placeholder"></span>';
+                    }
+                    
+                    // 如果是最后一个点，添加行结束标签
+                    if (i === maxDotsCount - 1) {
+                        rejectedDots += '</div>';
+                    }
+                }
+                
+                // 创建题目卡片 - 点阵热力图样式
+                heatmapHtml += `
+                    <div class="problem-card">
+                        <div class="problem-badge" style="background-color: ${backgroundColor}; color: ${textColor};">${problemId}</div>
+                        
+                        <div class="dots-container">
+                            <div class="dots-row accepted-row">
+                                ${acceptedDots}
+                            </div>
+                            <div class="dots-row rejected-row">
+                                ${rejectedDots}
+                            </div>
+                        </div>
                     </div>
-                    <div class="stat-row">
-                        <span class="stat-submissions">${totalSubmissions}次提交</span>
-                    </div>
-                </div>
-            </div>
-        `;
-    });
-    
-    // 关闭容器
-    heatmapHtml += '</div>';
-    return heatmapHtml;
+                `;
+            } catch (problemError) {
+                console.error(`处理题目 ${problemId} 时出错:`, problemError);
+                // 继续处理下一个题目
+            }
+        });
+        
+        // 关闭容器
+        heatmapHtml += '</div>';
+        return heatmapHtml;
+    } catch (error) {
+        console.error('生成热力图时发生错误:', error);
+        return '<div class="alert alert-danger">生成热力图时发生错误: ' + error.message + '</div>';
+    }
 }
 
 // 显示统计数据
 function displayStatistics(data, filter, container) {
-    // 调用内部实现函数
-    window.internalDisplayStatistics(data, filter, container);
+    // 准备数据
+    const filterText = getFilterDisplayText(filter);
+    
+    // 计算总体提交统计
+    const totalAccepted = Object.values(data.problem_stats).reduce((sum, stats) => sum + (stats.accepted || 0), 0);
+    const totalRejected = Object.values(data.problem_stats).reduce((sum, stats) => sum + (stats.rejected || 0), 0);
+    const totalPending = Object.values(data.problem_stats).reduce((sum, stats) => sum + (stats.pending || 0), 0);
+    const totalSubmissions = totalAccepted + totalRejected + totalPending;
+    const overallAcceptRate = totalSubmissions > 0 ? (totalAccepted / totalSubmissions * 100).toFixed(1) : 0;
+    
+    // 找出解题人数最多和最少的题目
+    let maxSolvedProblem = { id: '-', count: 0 };
+    let minSolvedProblem = { id: '-', count: Infinity };
+    
+    Object.entries(data.problem_stats).forEach(([id, stats]) => {
+        if (stats.accepted > maxSolvedProblem.count) {
+            maxSolvedProblem = { id, count: stats.accepted };
+        }
+        if (stats.accepted < minSolvedProblem.count || minSolvedProblem.count === Infinity) {
+            minSolvedProblem = { id, count: stats.accepted };
+        }
+    });
+    
+    // 如果没有任何提交，设置最少解题人数为0
+    if (minSolvedProblem.count === Infinity) {
+        minSolvedProblem.count = 0;
+    }
+    
+    // 创建统计内容
+    const statsContent = document.createElement('div');
+    statsContent.className = 'statistics-container';
+    statsContent.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="mb-0">比赛统计 ${filterText ? `(${filterText})` : ''}</h4>
+        </div>
+        
+        <!-- 基本统计数据 -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h2 class="card-title">${data.problem_count}</h2>
+                        <p class="card-text">题目数</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h2 class="card-title">${data.team_count}</h2>
+                        <p class="card-text">队伍数</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h2 class="card-title">${data.submission_count}</h2>
+                        <p class="card-text">提交数</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h2 class="card-title" style="color: ${overallAcceptRate > 50 ? '#28a745' : '#dc3545'};">${overallAcceptRate}%</h2>
+                        <p class="card-text">总通过率</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 额外的统计信息 -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">提交类型分布</h5>
+                        <div style="height: 10px; background: #f0f0f0; border-radius: 5px; margin: 10px 0; overflow: hidden; display: flex;">
+                            <div style="background-color: #28a745; height: 100%; width: ${totalSubmissions > 0 ? (totalAccepted / totalSubmissions * 100) : 0}%;"></div>
+                            <div style="background-color: #dc3545; height: 100%; width: ${totalSubmissions > 0 ? (totalRejected / totalSubmissions * 100) : 0}%;"></div>
+                            <div style="background-color: #ffc107; height: 100%; width: ${totalSubmissions > 0 ? (totalPending / totalSubmissions * 100) : 0}%;"></div>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <div>通过: <span class="text-success">${totalAccepted}</span></div>
+                            <div>拒绝: <span class="text-danger">${totalRejected}</span></div>
+                            <div>待定: <span class="text-warning">${totalPending}</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">题目解题情况</h5>
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <p class="mb-1">最易题目: <span class="badge" style="background-color: #28a745;">${maxSolvedProblem.id}</span></p>
+                                <small>解出: ${maxSolvedProblem.count}次</small>
+                            </div>
+                            <div>
+                                <p class="mb-1">最难题目: <span class="badge" style="background-color: #dc3545;">${minSolvedProblem.id}</span></p>
+                                <small>解出: ${minSolvedProblem.count}次</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 题目提交情况 -->
+        <div class="mb-4">
+            <h5 class="heatmap-title">提交热力图</h5>
+            <div class="d-flex justify-content-center mb-2" style="font-size: 0.85rem; color: #666;">
+                <div class="me-3"><span style="display: inline-block; width: 8px; height: 8px; background-color: #28a745; margin-right: 5px;"></span>通过</div>
+                <div><span style="display: inline-block; width: 8px; height: 8px; background-color: #dc3545; margin-right: 5px;"></span>拒绝</div>
+            </div>
+            <div class="problem-heatmap">
+                ${generateCardHeatmap(data.problem_stats)}
+            </div>
+        </div>
+        
+        <!-- 图表部分 -->
+        <div class="row mb-4">
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">提交类型分布</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="submissionTypeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">队伍解题数分布</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="teamSolvedChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">题目提交分布</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="problemSubmissionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 清空容器并添加统计内容
+    container.innerHTML = '';
+    container.appendChild(statsContent);
+    
+    // 延迟初始化图表，确保DOM已经渲染
+    setTimeout(() => {
+        // 初始化图表
+        initializeCharts(data);
+    }, 100);
 }
 
 // 确保关键函数在全局范围内可用
@@ -1317,6 +1684,31 @@ window.internalDisplayStatistics = function(data, filter, container) {
     // 准备数据
     const filterText = getFilterDisplayText(filter);
     
+    // 计算总体提交统计
+    const totalAccepted = Object.values(data.problem_stats).reduce((sum, stats) => sum + (stats.accepted || 0), 0);
+    const totalRejected = Object.values(data.problem_stats).reduce((sum, stats) => sum + (stats.rejected || 0), 0);
+    const totalPending = Object.values(data.problem_stats).reduce((sum, stats) => sum + (stats.pending || 0), 0);
+    const totalSubmissions = totalAccepted + totalRejected + totalPending;
+    const overallAcceptRate = totalSubmissions > 0 ? (totalAccepted / totalSubmissions * 100).toFixed(1) : 0;
+    
+    // 找出解题人数最多和最少的题目
+    let maxSolvedProblem = { id: '-', count: 0 };
+    let minSolvedProblem = { id: '-', count: Infinity };
+    
+    Object.entries(data.problem_stats).forEach(([id, stats]) => {
+        if (stats.accepted > maxSolvedProblem.count) {
+            maxSolvedProblem = { id, count: stats.accepted };
+        }
+        if (stats.accepted < minSolvedProblem.count || minSolvedProblem.count === Infinity) {
+            minSolvedProblem = { id, count: stats.accepted };
+        }
+    });
+    
+    // 如果没有任何提交，设置最少解题人数为0
+    if (minSolvedProblem.count === Infinity) {
+        minSolvedProblem.count = 0;
+    }
+    
     // 创建统计内容
     const statsContent = document.createElement('div');
     statsContent.className = 'statistics-container';
@@ -1327,7 +1719,7 @@ window.internalDisplayStatistics = function(data, filter, container) {
         
         <!-- 基本统计数据 -->
         <div class="row mb-4">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card text-center">
                     <div class="card-body">
                         <h2 class="card-title">${data.problem_count}</h2>
@@ -1335,7 +1727,7 @@ window.internalDisplayStatistics = function(data, filter, container) {
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card text-center">
                     <div class="card-body">
                         <h2 class="card-title">${data.team_count}</h2>
@@ -1343,7 +1735,7 @@ window.internalDisplayStatistics = function(data, filter, container) {
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <div class="card text-center">
                     <div class="card-body">
                         <h2 class="card-title">${data.submission_count}</h2>
@@ -1351,13 +1743,106 @@ window.internalDisplayStatistics = function(data, filter, container) {
                     </div>
                 </div>
             </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h2 class="card-title" style="color: ${overallAcceptRate > 50 ? '#28a745' : '#dc3545'};">${overallAcceptRate}%</h2>
+                        <p class="card-text">总通过率</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 额外的统计信息 -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">提交类型分布</h5>
+                        <div style="height: 10px; background: #f0f0f0; border-radius: 5px; margin: 10px 0; overflow: hidden; display: flex;">
+                            <div style="background-color: #28a745; height: 100%; width: ${totalSubmissions > 0 ? (totalAccepted / totalSubmissions * 100) : 0}%;"></div>
+                            <div style="background-color: #dc3545; height: 100%; width: ${totalSubmissions > 0 ? (totalRejected / totalSubmissions * 100) : 0}%;"></div>
+                            <div style="background-color: #ffc107; height: 100%; width: ${totalSubmissions > 0 ? (totalPending / totalSubmissions * 100) : 0}%;"></div>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <div>通过: <span class="text-success">${totalAccepted}</span></div>
+                            <div>拒绝: <span class="text-danger">${totalRejected}</span></div>
+                            <div>待定: <span class="text-warning">${totalPending}</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">题目解题情况</h5>
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <p class="mb-1">最易题目: <span class="badge" style="background-color: #28a745;">${maxSolvedProblem.id}</span></p>
+                                <small>解出: ${maxSolvedProblem.count}次</small>
+                            </div>
+                            <div>
+                                <p class="mb-1">最难题目: <span class="badge" style="background-color: #dc3545;">${minSolvedProblem.id}</span></p>
+                                <small>解出: ${minSolvedProblem.count}次</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         
         <!-- 题目提交情况 -->
         <div class="mb-4">
-            <h5 class="heatmap-title">题目提交热力图</h5>
+            <h5 class="heatmap-title">提交热力图</h5>
+            <div class="d-flex justify-content-center mb-2" style="font-size: 0.85rem; color: #666;">
+                <div class="me-3"><span style="display: inline-block; width: 8px; height: 8px; background-color: #28a745; margin-right: 5px;"></span>通过</div>
+                <div><span style="display: inline-block; width: 8px; height: 8px; background-color: #dc3545; margin-right: 5px;"></span>拒绝</div>
+            </div>
             <div class="problem-heatmap">
                 ${generateCardHeatmap(data.problem_stats)}
+            </div>
+        </div>
+        
+        <!-- 图表部分 -->
+        <div class="row mb-4">
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">提交类型分布</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="submissionTypeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">队伍解题数分布</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="teamSolvedChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title">题目提交分布</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="problemSubmissionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     `;
@@ -1366,12 +1851,17 @@ window.internalDisplayStatistics = function(data, filter, container) {
     container.innerHTML = '';
     container.appendChild(statsContent);
     
-    // 初始化图表
-    initializeCharts(data);
+    // 延迟初始化图表，确保DOM已经渲染
+    setTimeout(() => {
+        // 初始化图表
+        initializeCharts(data);
+    }, 100);
 };
 
 // 初始化各种图表
 function initializeCharts(data) {
+    console.log("初始化统计图表...");
+    
     // 准备提交类型图表数据
     const submissionTypeLabels = [];
     const submissionTypeData = [];
@@ -1423,6 +1913,7 @@ function initializeCharts(data) {
     // 创建提交类型饼图
     const submissionTypeCtx = document.getElementById('submissionTypeChart');
     if (submissionTypeCtx) {
+        console.log("渲染提交类型饼图...");
         new Chart(submissionTypeCtx, {
             type: 'doughnut',
             data: {
@@ -1446,11 +1937,14 @@ function initializeCharts(data) {
                 }
             }
         });
+    } else {
+        console.warn("未找到提交类型图表容器");
     }
     
     // 创建队伍解题数柱状图
     const teamSolvedCtx = document.getElementById('teamSolvedChart');
     if (teamSolvedCtx) {
+        console.log("渲染队伍解题数柱状图...");
         new Chart(teamSolvedCtx, {
             type: 'bar',
             data: {
@@ -1482,11 +1976,14 @@ function initializeCharts(data) {
                 }
             }
         });
+    } else {
+        console.warn("未找到队伍解题数图表容器");
     }
     
     // 创建题目提交分布堆叠柱状图
     const problemSubmissionCtx = document.getElementById('problemSubmissionChart');
     if (problemSubmissionCtx) {
+        console.log("渲染题目提交分布堆叠柱状图...");
         new Chart(problemSubmissionCtx, {
             type: 'bar',
             data: {
@@ -1533,6 +2030,8 @@ function initializeCharts(data) {
                 }
             }
         });
+    } else {
+        console.warn("未找到题目提交分布图表容器");
     }
 }
 
@@ -1591,170 +2090,4 @@ function showNotification(message, type = 'info') {
             document.body.removeChild(notification);
         }, 150);
     }, 3000);
-}
-
-// 初始化各种图表
-function initializeCharts(data) {
-    // 准备提交类型图表数据
-    const submissionTypeLabels = [];
-    const submissionTypeData = [];
-    const submissionTypeColors = [];
-    
-    // 使用预定义的颜色
-    const submissionTypeColorMap = {
-        'accepted': '#28a745', // 绿色
-        'rejected': '#dc3545', // 红色
-        'frozen': '#ffc107',   // 黄色
-        'pending': '#6c757d'   // 灰色
-    };
-    
-    // 遍历提交类型
-    for (const [type, count] of Object.entries(data.submission_types)) {
-        submissionTypeLabels.push(getSubmissionTypeDisplayText(type));
-        submissionTypeData.push(count);
-        
-        // 使用预定义颜色或默认颜色
-        const color = submissionTypeColorMap[type] || '#007bff';
-        submissionTypeColors.push(color);
-    }
-    
-    // 队伍解题数数据
-    const teamSolvedLabels = [];
-    const teamSolvedData = [];
-    
-    // 遍历解题数统计
-    for (let i = 0; i <= data.problem_count; i++) {
-        teamSolvedLabels.push(i);
-        teamSolvedData.push(data.team_solved_count[i] || 0);
-    }
-    
-    // 构建题目提交数据
-    const problemLabels = [];
-    const acceptedData = [];
-    const rejectedData = [];
-    const pendingData = [];
-    
-    // 遍历题目统计数据
-    for (const problemId of Object.keys(data.problem_stats).sort()) {
-        const stats = data.problem_stats[problemId];
-        problemLabels.push(problemId);
-        acceptedData.push(stats.accepted);
-        rejectedData.push(stats.rejected);
-        pendingData.push(stats.pending);
-    }
-    
-    // 创建提交类型饼图
-    const submissionTypeCtx = document.getElementById('submissionTypeChart');
-    if (submissionTypeCtx) {
-        new Chart(submissionTypeCtx, {
-            type: 'doughnut',
-            data: {
-                labels: submissionTypeLabels,
-                datasets: [{
-                    data: submissionTypeData,
-                    backgroundColor: submissionTypeColors,
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'right',
-                    },
-                    title: {
-                        display: false
-                    }
-                }
-            }
-        });
-    }
-    
-    // 创建队伍解题数柱状图
-    const teamSolvedCtx = document.getElementById('teamSolvedChart');
-    if (teamSolvedCtx) {
-        new Chart(teamSolvedCtx, {
-            type: 'bar',
-            data: {
-                labels: teamSolvedLabels,
-                datasets: [{
-                    label: '队伍数',
-                    data: teamSolvedData,
-                    backgroundColor: '#4e73df',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        title: {
-                            display: true,
-                            text: '过题数'
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: '队伍数'
-                        }
-                    }
-                }
-            }
-        });
-    }
-    
-    // 创建题目提交分布堆叠柱状图
-    const problemSubmissionCtx = document.getElementById('problemSubmissionChart');
-    if (problemSubmissionCtx) {
-        new Chart(problemSubmissionCtx, {
-            type: 'bar',
-            data: {
-                labels: problemLabels,
-                datasets: [
-                    {
-                        label: '通过',
-                        data: acceptedData,
-                        backgroundColor: '#28a745',
-                        stack: 'Stack 0'
-                    },
-                    {
-                        label: '拒绝',
-                        data: rejectedData,
-                        backgroundColor: '#dc3545',
-                        stack: 'Stack 0'
-                    },
-                    {
-                        label: '待定',
-                        data: pendingData,
-                        backgroundColor: '#ffc107',
-                        stack: 'Stack 0'
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    x: {
-                        title: {
-                            display: true,
-                            text: '题目编号'
-                        }
-                    },
-                    y: {
-                        beginAtZero: true,
-                        stacked: true,
-                        title: {
-                            display: true,
-                            text: '提交数'
-                        }
-                    }
-                }
-            }
-        });
-    }
 } 
