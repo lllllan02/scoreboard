@@ -6,14 +6,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const submissionsBtn = document.getElementById('submissionsBtn');
     if (submissionsBtn) {
         submissionsBtn.addEventListener('click', function() {
-            showSubmissions();
+            // 获取 URL 参数中的页码，默认为第一页
+            const urlParams = new URLSearchParams(window.location.search);
+            const page = parseInt(urlParams.get('page')) || 1;
+            showSubmissions(page);
         });
         console.log('提交记录按钮事件已绑定');
+    }
+    
+    // 如果当前页面视图是提交记录视图，自动加载提交记录
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentView = urlParams.get('view');
+    if (currentView === 'submissions') {
+        const page = parseInt(urlParams.get('page')) || 1;
+        showSubmissions(page);
     }
 });
 
 // 显示提交记录信息
-function showSubmissions() {
+function showSubmissions(page = 1, pageSize = 15) {
     console.log('正在显示提交记录');
     
     try {
@@ -78,20 +89,25 @@ function showSubmissions() {
         // 构建API URL
         let apiUrl = `/api/submissions/${contestId}`;
         
-        // 添加筛选参数
+        // 添加筛选和分页参数
         const urlParams = new URLSearchParams();
         if (filter !== 'all') {
             urlParams.append('filter', filter);
         }
+        
+        // 添加分页参数
+        urlParams.append('page', page);
+        urlParams.append('page_size', pageSize);
+        
         if (urlParams.toString()) {
             apiUrl += '?' + urlParams.toString();
         }
         
-        // 更新URL，始终保存当前视图为submissions和筛选条件
+        // 更新URL，保存当前视图、筛选条件和分页信息
         if (typeof window.updateURLWithFilter === 'function') {
-            window.updateURLWithFilter(filter, 'submissions');
+            window.updateURLWithFilter(filter, 'submissions', page);
         } else {
-            updateURLParams(filter, 'submissions');
+            updateURLParams(filter, 'submissions', page);
         }
         
         console.log('正在请求提交记录，URL:', apiUrl);
@@ -142,7 +158,23 @@ function showSubmissions() {
 }
 
 // 显示提交记录
-function displaySubmissions(submissions, filter, container) {
+function displaySubmissions(data, filter, container) {
+    // 检查数据结构
+    if (!data || (!data.submissions && !Array.isArray(data))) {
+        console.error('无效的提交记录数据格式');
+        container.innerHTML = `
+            <div class="alert alert-warning my-5 text-center">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                获取到的数据格式不正确
+            </div>
+        `;
+        return;
+    }
+    
+    // 确定数据源和分页信息
+    let submissions = Array.isArray(data) ? data : data.submissions;
+    let pagination = data.pagination || null;
+    
     // 准备数据
     const filterText = getFilterDisplayText(filter);
     
@@ -192,7 +224,6 @@ function displaySubmissions(submissions, filter, container) {
         
         // 确定结果样式
         const statusClass = getStatusClass(submission.status);
-        const statusText = getStatusText(submission.status);
         
         // 添加表格行
         tableHTML += `
@@ -200,7 +231,7 @@ function displaySubmissions(submissions, filter, container) {
                 <td>${submission.id}</td>
                 <td>${formattedTime}</td>
                 <td>${submission.problem_id}</td>
-                <td><span class="badge ${statusClass}">${statusText}</span></td>
+                <td><span class="badge ${statusClass}">${submission.status}</span></td>
                 <td>${submission.language || '-'}</td>
                 <td>${submission.team_name}</td>
                 <td>${submission.school}</td>
@@ -213,6 +244,133 @@ function displaySubmissions(submissions, filter, container) {
             </tbody>
         </table>
     `;
+    
+    // 如果有分页信息，添加分页导航
+    if (pagination) {
+        const currentPage = pagination.current_page;
+        const totalPages = pagination.total_pages;
+        const pageSize = pagination.page_size;
+        const totalItems = pagination.total_items;
+        
+        // 添加分页导航
+        tableHTML += `
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <div class="text-muted">
+                    总共 ${totalItems} 条记录，共 ${totalPages} 页
+                </div>
+                <nav aria-label="提交记录分页">
+                    <ul class="pagination mb-0">
+        `;
+        
+        // 上一页按钮
+        if (currentPage > 1) {
+            tableHTML += `
+                <li class="page-item">
+                    <a class="page-link" href="#" onclick="showSubmissions(${currentPage - 1}, ${pageSize}); return false;">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+            `;
+        } else {
+            tableHTML += `
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1" aria-disabled="true">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+            `;
+        }
+        
+        // 页码按钮
+        // 决定显示哪些页码（最多显示5个页码）
+        let startPage = Math.max(1, currentPage - 2);
+        let endPage = Math.min(totalPages, startPage + 4);
+        
+        // 如果页码不足5个，调整起始页
+        if (endPage - startPage < 4) {
+            startPage = Math.max(1, endPage - 4);
+        }
+        
+        // 添加第一页按钮（如果当前不在第一组页码中）
+        if (startPage > 1) {
+            tableHTML += `
+                <li class="page-item">
+                    <a class="page-link" href="#" onclick="showSubmissions(1, ${pageSize}); return false;">1</a>
+                </li>
+            `;
+            
+            // 如果起始页不是2，添加省略号
+            if (startPage > 2) {
+                tableHTML += `
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" tabindex="-1" aria-disabled="true">...</a>
+                    </li>
+                `;
+            }
+        }
+        
+        // 添加页码按钮
+        for (let i = startPage; i <= endPage; i++) {
+            if (i === currentPage) {
+                tableHTML += `
+                    <li class="page-item active" aria-current="page">
+                        <a class="page-link" href="#">${i}</a>
+                    </li>
+                `;
+            } else {
+                tableHTML += `
+                    <li class="page-item">
+                        <a class="page-link" href="#" onclick="showSubmissions(${i}, ${pageSize}); return false;">${i}</a>
+                    </li>
+                `;
+            }
+        }
+        
+        // 如果不是最后一组页码，添加省略号和最后一页
+        if (endPage < totalPages) {
+            // 如果结束页不是倒数第二页，添加省略号
+            if (endPage < totalPages - 1) {
+                tableHTML += `
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" tabindex="-1" aria-disabled="true">...</a>
+                    </li>
+                `;
+            }
+            
+            // 添加最后一页按钮
+            tableHTML += `
+                <li class="page-item">
+                    <a class="page-link" href="#" onclick="showSubmissions(${totalPages}, ${pageSize}); return false;">${totalPages}</a>
+                </li>
+            `;
+        }
+        
+        // 下一页按钮
+        if (currentPage < totalPages) {
+            tableHTML += `
+                <li class="page-item">
+                    <a class="page-link" href="#" onclick="showSubmissions(${currentPage + 1}, ${pageSize}); return false;">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+            `;
+        } else {
+            tableHTML += `
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1" aria-disabled="true">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+            `;
+        }
+        
+        // 关闭分页导航
+        tableHTML += `
+                    </ul>
+                </nav>
+            </div>
+        `;
+    }
     
     submissionsContent.innerHTML = tableHTML;
     
@@ -307,24 +465,8 @@ function getStatusClass(status) {
     }
 }
 
-// 获取状态显示文本
-function getStatusText(status) {
-    const statusMap = {
-        'ACCEPTED': '通过',
-        'WRONG_ANSWER': '答案错误',
-        'TIME_LIMIT_EXCEEDED': '超时',
-        'MEMORY_LIMIT_EXCEEDED': '超内存',
-        'RUNTIME_ERROR': '运行错误',
-        'COMPILATION_ERROR': '编译错误',
-        'FROZEN': '已冻结',
-        'PENDING': '等待评测'
-    };
-    
-    return statusMap[status.toUpperCase()] || status;
-}
-
 // 更新URL参数
-function updateURLParams(filter, view) {
+function updateURLParams(filter, view, page) {
     // 获取当前URL
     const url = new URL(window.location.href);
     
@@ -342,6 +484,14 @@ function updateURLParams(filter, view) {
     } else {
         // 如果没有指定视图，则删除view参数
         url.searchParams.delete('view');
+    }
+    
+    // 更新页码参数
+    if (page && page > 1) {
+        url.searchParams.set('page', page);
+    } else {
+        // 如果是第一页，则删除page参数
+        url.searchParams.delete('page');
     }
     
     // 更新浏览器历史记录，但不重新加载页面

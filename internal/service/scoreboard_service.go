@@ -413,23 +413,23 @@ type SubmissionRecord struct {
 }
 
 // GetSubmissions 获取比赛的提交记录
-func (s *ScoreboardService) GetSubmissions(contestID string, filter string) ([]*SubmissionRecord, error) {
+func (s *ScoreboardService) GetSubmissions(contestID string, filter string, page int, pageSize int) ([]*SubmissionRecord, int, error) {
 	// 获取比赛信息
 	contest, err := s.GetContest(contestID)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	// 加载原始提交记录
 	runs, err := contest.LoadRuns()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load runs: %w", err)
+		return nil, 0, fmt.Errorf("failed to load runs: %w", err)
 	}
 
 	// 加载队伍信息
 	teams, err := contest.LoadTeams()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load teams: %w", err)
+		return nil, 0, fmt.Errorf("failed to load teams: %w", err)
 	}
 
 	// 处理筛选
@@ -438,7 +438,7 @@ func (s *ScoreboardService) GetSubmissions(contestID string, filter string) ([]*
 		// 获取符合筛选条件的队伍列表
 		results, _, err := s.GetScoreboardWithFilter(contestID, filter)
 		if err != nil {
-			return nil, fmt.Errorf("failed to filter teams: %w", err)
+			return nil, 0, fmt.Errorf("failed to filter teams: %w", err)
 		}
 
 		filteredTeamIDs = make(map[string]bool)
@@ -497,5 +497,43 @@ func (s *ScoreboardService) GetSubmissions(contestID string, filter string) ([]*
 		return submissionRecords[i].Timestamp > submissionRecords[j].Timestamp
 	})
 
-	return submissionRecords, nil
+	// 计算总记录数（未被过滤的）
+	totalCount := 0
+	for _, record := range submissionRecords {
+		if !record.IsFiltered {
+			totalCount++
+		}
+	}
+
+	// 如果未指定分页参数，使用默认值
+	if page <= 0 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 15 // 默认每页15条记录
+	}
+
+	// 应用分页（只返回符合筛选条件的记录）
+	var pagedRecords []*SubmissionRecord
+	count := 0
+	startIndex := (page - 1) * pageSize
+	endIndex := startIndex + pageSize
+
+	for _, record := range submissionRecords {
+		if record.IsFiltered {
+			continue
+		}
+
+		if count >= startIndex && count < endIndex {
+			pagedRecords = append(pagedRecords, record)
+		}
+		count++
+
+		// 如果已收集足够的记录且已超过请求的页码范围，可以提前退出循环
+		if count >= endIndex {
+			break
+		}
+	}
+
+	return pagedRecords, totalCount, nil
 }

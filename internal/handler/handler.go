@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -189,8 +190,30 @@ func SubmissionsHandler(svc *service.ScoreboardService) http.HandlerFunc {
 		// 获取筛选参数
 		filter := r.URL.Query().Get("filter")
 
+		// 获取分页参数
+		page := 1
+		pageSize := 15
+
+		// 尝试解析页码参数
+		if pageStr := r.URL.Query().Get("page"); pageStr != "" {
+			if parsedPage, err := strconv.Atoi(pageStr); err == nil && parsedPage > 0 {
+				page = parsedPage
+			}
+		}
+
+		// 尝试解析每页大小参数
+		if pageSizeStr := r.URL.Query().Get("page_size"); pageSizeStr != "" {
+			if parsedSize, err := strconv.Atoi(pageSizeStr); err == nil && parsedSize > 0 {
+				// 限制每页大小，防止请求过大数据
+				if parsedSize > 100 {
+					parsedSize = 100
+				}
+				pageSize = parsedSize
+			}
+		}
+
 		// 使用服务层获取提交记录
-		submissions, err := svc.GetSubmissions(contestID, filter)
+		submissions, totalCount, err := svc.GetSubmissions(contestID, filter, page, pageSize)
 		if err != nil {
 			log.Printf("获取提交记录失败: %v", err)
 			if strings.Contains(err.Error(), "not found") {
@@ -201,8 +224,22 @@ func SubmissionsHandler(svc *service.ScoreboardService) http.HandlerFunc {
 			return
 		}
 
+		// 计算总页数
+		totalPages := (totalCount + pageSize - 1) / pageSize
+
+		// 构建分页响应
+		response := map[string]interface{}{
+			"submissions": submissions,
+			"pagination": map[string]interface{}{
+				"current_page": page,
+				"page_size":    pageSize,
+				"total_items":  totalCount,
+				"total_pages":  totalPages,
+			},
+		}
+
 		// 返回提交记录
-		log.Printf("成功获取提交记录，共 %d 条", len(submissions))
-		respondJSON(w, http.StatusOK, submissions)
+		log.Printf("成功获取提交记录，第 %d 页，共 %d 条，总计 %d 条记录", page, len(submissions), totalCount)
+		respondJSON(w, http.StatusOK, response)
 	}
 }
