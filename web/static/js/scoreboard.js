@@ -2166,8 +2166,8 @@ function initializeCharts(data) {
                 datasets: [{
                     label: '队伍数',
                     data: teamSolvedData,
-                    backgroundColor: '#4e73df',
-                    borderWidth: 1
+                    backgroundColor: '#4361ee',
+                    borderWidth: 0
                 }]
             },
             options: {
@@ -2178,6 +2178,9 @@ function initializeCharts(data) {
                         title: {
                             display: true,
                             text: '过题数'
+                        },
+                        grid: {
+                            display: false // 不显示竖线
                         }
                     },
                     y: {
@@ -2185,6 +2188,22 @@ function initializeCharts(data) {
                         title: {
                             display: true,
                             text: '队伍数'
+                        },
+                        grid: {
+                            display: true,
+                            color: 'rgba(0,0,0,0.05)'
+                        },
+                        ticks: {
+                            stepSize: 20 // 设置刻度间隔，减少横线密度
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 15
                         }
                     }
                 }
