@@ -2204,21 +2204,21 @@ function initializeCharts(data) {
                 labels: problemLabels,
                 datasets: [
                     {
-                        label: '通过',
-                        data: acceptedData,
-                        backgroundColor: '#28a745',
+                        label: '待定',
+                        data: pendingData,
+                        backgroundColor: '#ffc107', // 黄色
                         stack: 'Stack 0'
                     },
                     {
                         label: '拒绝',
                         data: rejectedData,
-                        backgroundColor: '#dc3545',
+                        backgroundColor: '#FFD0D0', // 红色
                         stack: 'Stack 0'
                     },
                     {
-                        label: '待定',
-                        data: pendingData,
-                        backgroundColor: '#ffc107',
+                        label: '通过',
+                        data: acceptedData,
+                        backgroundColor: '#E1FFB5', // 绿色
                         stack: 'Stack 0'
                     }
                 ]
@@ -2231,6 +2231,9 @@ function initializeCharts(data) {
                         title: {
                             display: true,
                             text: '题目编号'
+                        },
+                        grid: {
+                            display: false // 不显示竖线
                         }
                     },
                     y: {
@@ -2239,6 +2242,29 @@ function initializeCharts(data) {
                         title: {
                             display: true,
                             text: '提交数'
+                        },
+                        grid: {
+                            display: true,
+                            color: 'rgba(0,0,0,0.05)'
+                        },
+                        ticks: {
+                            stepSize: 400 // 设置刻度间隔为400，减少横线密度
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 15
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                return `题目 ${context[0].label}`;
+                            }
                         }
                     }
                 }
