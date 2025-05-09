@@ -1988,12 +1988,17 @@ function initializeCharts(data) {
     const submissionTypeData = [];
     const submissionTypeColors = [];
     
-    // 使用预定义的颜色
+    // 使用预定义的颜色 - 扩展颜色映射以包含更多提交类型
     const submissionTypeColorMap = {
         'accepted': '#28a745', // 绿色
         'rejected': '#dc3545', // 红色
         'frozen': '#ffc107',   // 黄色
-        'pending': '#6c757d'   // 灰色
+        'pending': '#6c757d',  // 灰色
+        'wrong_answer': '#fd7e14', // 橙色
+        'time_limit_exceeded': '#6610f2', // 紫色
+        'memory_limit_exceeded': '#20c997', // 青色
+        'runtime_error': '#e83e8c', // 粉色
+        'compilation_error': '#17a2b8' // 蓝绿色
     };
     
     // 遍历提交类型
@@ -2035,26 +2040,114 @@ function initializeCharts(data) {
     const submissionTypeCtx = document.getElementById('submissionTypeChart');
     if (submissionTypeCtx) {
         console.log("渲染提交类型饼图...");
+        
+        // 使用常规的评测结果颜色方案
+        const submissionTypeColorMap = {
+            'ACCEPTED': '#28a745',         // 绿色 - AC
+            'WRONG_ANSWER': '#dc3545',     // 红色 - WA
+            'COMPILATION_ERROR': '#007bff', // 蓝色 - CE
+            'RUNTIME_ERROR': '#ffc107',    // 黄色 - RE
+            'TIME_LIMIT_EXCEEDED': '#6f42c1', // 紫色 - TLE
+            'MEMORY_LIMIT_EXCEEDED': '#20c997', // 青色 - MLE
+            'REJECTED': '#6c757d',          // 灰色
+            'accepted': '#28a745',         // 绿色 - 小写
+            'wrong_answer': '#dc3545',     // 红色 - 小写
+            'compilation_error': '#007bff', // 蓝色 - 小写
+            'runtime_error': '#ffc107',    // 黄色 - 小写
+            'time_limit_exceeded': '#6f42c1', // 紫色 - 小写
+            'memory_limit_exceeded': '#20c997', // 青色 - 小写
+            'rejected': '#6c757d',          // 灰色 - 小写
+            'frozen': '#fd7e14',           // 橙色
+            'pending': '#17a2b8'           // 蓝绿色
+        };
+        
+        // 创建类型和标签的映射
+        const typeToLabelMap = {};
+        const types = Object.keys(data.submission_types);
+        for (let i = 0; i < types.length; i++) {
+            typeToLabelMap[types[i]] = submissionTypeLabels[i];
+        }
+        
+        console.log("类型到标签映射:", typeToLabelMap);
+        
+        // 为每个标签准备颜色
+        const submissionColors = [];
+        for (let i = 0; i < submissionTypeLabels.length; i++) {
+            const type = types[i];
+            // 尝试直接匹配类型，如果找不到则尝试大写版本
+            const color = submissionTypeColorMap[type] || 
+                         submissionTypeColorMap[type.toUpperCase()] || 
+                         '#007bff';
+            console.log(`提交类型 #${i}: ${type} -> 标签: ${submissionTypeLabels[i]} -> 颜色: ${color}`);
+            submissionColors.push(color);
+        }
+        
         new Chart(submissionTypeCtx, {
             type: 'doughnut',
             data: {
                 labels: submissionTypeLabels,
                 datasets: [{
                     data: submissionTypeData,
-                    backgroundColor: submissionTypeColors,
-                    borderWidth: 1
+                    backgroundColor: submissionColors,
+                    borderColor: 'white',
+                    borderWidth: 2,
+                    hoverBorderWidth: 3,
+                    hoverBackgroundColor: submissionColors.map(color => {
+                        // 增加悬停时的亮度
+                        return color + 'dd';
+                    }),
+                    hoverBorderColor: 'white'
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                cutout: '65%', // 设置内圆大小
+                radius: '90%', // 最大化图表大小
                 plugins: {
                     legend: {
                         position: 'right',
+                        labels: {
+                            padding: 15,
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            font: {
+                                size: 12
+                            },
+                            color: '#333'
+                        }
                     },
                     title: {
                         display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.75)',
+                        titleFont: {
+                            size: 14,
+                            weight: 'bold'
+                        },
+                        bodyFont: {
+                            size: 13
+                        },
+                        padding: 10,
+                        cornerRadius: 4,
+                        displayColors: true,
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
                     }
+                },
+                animation: {
+                    animateRotate: true,
+                    animateScale: true,
+                    duration: 800,
+                    easing: 'easeOutQuart'
                 }
             }
         });

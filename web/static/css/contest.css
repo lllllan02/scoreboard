@@ -143,11 +143,27 @@
 .chart-container {
     position: relative;
     margin: auto;
-    height: 250px;
+    height: 300px;
+    padding: 10px;
 }
+
+/* 提交类型图表专用样式 */
+#submissionTypeChart {
+    filter: drop-shadow(0 3px 5px rgba(0,0,0,0.07));
+}
+
+.card .chart-container {
+    padding: 10px;
+}
+
+.doughnut-chart-container {
+    position: relative;
+}
+
 .modal-xl {
     max-width: 90%;
 }
+
 .problem-heatmap {
     margin-top: 15px;
 }
