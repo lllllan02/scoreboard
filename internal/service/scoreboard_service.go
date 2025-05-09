@@ -398,3 +398,104 @@ func (s *ScoreboardService) GetContestStatistics(contestID string, filter string
 
 	return stats, nil
 }
+
+// SubmissionRecord 定义提交记录的返回格式
+type SubmissionRecord struct {
+	ID         string `json:"id"`
+	Status     string `json:"status"`
+	TeamID     string `json:"team_id"`
+	TeamName   string `json:"team_name"`
+	School     string `json:"school"`
+	ProblemID  string `json:"problem_id"`
+	Timestamp  int64  `json:"timestamp"`
+	Language   string `json:"language"`
+	IsFiltered bool   `json:"is_filtered,omitempty"`
+}
+
+// GetSubmissions 获取比赛的提交记录
+func (s *ScoreboardService) GetSubmissions(contestID string, filter string) ([]*SubmissionRecord, error) {
+	// 获取比赛信息
+	contest, err := s.GetContest(contestID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 加载原始提交记录
+	runs, err := contest.LoadRuns()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load runs: %w", err)
+	}
+
+	// 加载队伍信息
+	teams, err := contest.LoadTeams()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load teams: %w", err)
+	}
+
+	// 处理筛选
+	var filteredTeamIDs map[string]bool
+	if filter != "" && filter != "all" {
+		// 获取符合筛选条件的队伍列表
+		results, _, err := s.GetScoreboardWithFilter(contestID, filter)
+		if err != nil {
+			return nil, fmt.Errorf("failed to filter teams: %w", err)
+		}
+
+		filteredTeamIDs = make(map[string]bool)
+		for _, result := range results {
+			filteredTeamIDs[result.TeamID] = true
+		}
+	}
+
+	// 转换为查询结果格式
+	var submissionRecords []*SubmissionRecord
+	for _, run := range runs {
+		// 确保题目ID在有效范围内
+		if run.ProblemID < 0 || run.ProblemID >= len(contest.ProblemIDs) {
+			continue
+		}
+
+		// 从数字索引获取字母ID
+		problemID := contest.ProblemIDs[run.ProblemID]
+
+		// 获取队伍信息 - 添加检查以避免空指针
+		team, exists := teams[run.TeamID]
+		if !exists {
+			// 如果找不到队伍信息，使用默认值
+			team = &model.Team{
+				ID:           run.TeamID,
+				Name:         "未知队伍",
+				Organization: "未知学校",
+			}
+		}
+
+		// 检查是否被筛选
+		isFiltered := false
+		if filteredTeamIDs != nil && !filteredTeamIDs[run.TeamID] {
+			isFiltered = true
+		}
+
+		// 创建提交记录
+		record := &SubmissionRecord{
+			ID:         run.ID,
+			Status:     run.Status,
+			TeamID:     run.TeamID,
+			TeamName:   team.Name,
+			School:     team.Organization,
+			ProblemID:  problemID,
+			Timestamp:  run.Timestamp,
+			Language:   run.Language,
+			IsFiltered: isFiltered,
+		}
+
+		submissionRecords = append(submissionRecords, record)
+	}
+
+	// 按提交时间排序
+	sort.Slice(submissionRecords, func(i, j int) bool {
+		// 降序排列（最新的在前）
+		return submissionRecords[i].Timestamp > submissionRecords[j].Timestamp
+	})
+
+	return submissionRecords, nil
+}

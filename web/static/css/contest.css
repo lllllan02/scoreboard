@@ -84,14 +84,6 @@
 }
 
 /* 统计相关样式 */
-#statisticsBtn {
-    background-color: #6f42c1;
-    border-color: #6f42c1;
-}
-#statisticsBtn:hover {
-    background-color: #5e35b1;
-    border-color: #5e35b1;
-}
 .problem-stats-container {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));

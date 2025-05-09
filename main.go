@@ -23,6 +23,7 @@ func main() {
 	http.HandleFunc("/contest/", handler.ContestHandler(scoreSvc))
 	http.HandleFunc("/api/scoreboard/", handler.ScoreboardHandler(scoreSvc))
 	http.HandleFunc("/api/statistics/", handler.StatisticsHandler(scoreSvc))
+	http.HandleFunc("/api/submissions/", handler.SubmissionsHandler(scoreSvc))
 
 	// 启动服务器
 	port := os.Getenv("PORT")

@@ -171,3 +171,38 @@ func StatisticsHandler(svc *service.ScoreboardService) http.HandlerFunc {
 		respondJSON(w, http.StatusOK, stats)
 	}
 }
+
+// SubmissionsHandler 处理获取提交记录的API请求
+func SubmissionsHandler(svc *service.ScoreboardService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// 从URL中获取比赛ID
+		parts := strings.Split(r.URL.Path, "/")
+		if len(parts) < 4 {
+			log.Printf("无效的URL路径: %s", r.URL.Path)
+			http.NotFound(w, r)
+			return
+		}
+
+		contestID := strings.TrimPrefix(r.URL.Path, "/api/submissions/")
+		log.Printf("获取比赛提交记录: %s", contestID)
+
+		// 获取筛选参数
+		filter := r.URL.Query().Get("filter")
+
+		// 使用服务层获取提交记录
+		submissions, err := svc.GetSubmissions(contestID, filter)
+		if err != nil {
+			log.Printf("获取提交记录失败: %v", err)
+			if strings.Contains(err.Error(), "not found") {
+				http.NotFound(w, r)
+			} else {
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			}
+			return
+		}
+
+		// 返回提交记录
+		log.Printf("成功获取提交记录，共 %d 条", len(submissions))
+		respondJSON(w, http.StatusOK, submissions)
+	}
+}

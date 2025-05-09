@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="/static/css/bootstrap.min.css?v=1.1">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <link rel="stylesheet" href="/static/css/main.css?v=1.9">
-    <link rel="stylesheet" href="/static/css/contest.css?v=1.0">
+    <link rel="stylesheet" href="/static/css/contest.css?v=1.1">
     <!-- Chart.js 图表库 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -107,12 +107,15 @@
                         <button type="button" class="btn btn-sm" data-filter="undergraduate">本科组</button>
                         <button type="button" class="btn btn-sm" data-filter="special">专科组</button>
                     </div>
-                    <div class="action-buttons">
-                        <button type="button" id="scoreboardBtn" class="btn btn-sm btn-outline-primary" style="margin-right: 5px; display: none;">
-                            <i class="bi bi-table"></i> 排行榜
+                    <div class="filter-buttons">
+                        <button type="button" id="rankBtn" class="btn btn-sm active" data-view="rank">
+                            <i class="bi bi-table"></i> 排名
                         </button>
-                        <button type="button" id="statisticsBtn" class="btn btn-sm btn-primary" data-view="statistics">
+                        <button type="button" id="statisticsBtn" class="btn btn-sm" data-view="statistics">
                             <i class="bi bi-bar-chart-line"></i> 统计
+                        </button>
+                        <button type="button" id="submissionsBtn" class="btn btn-sm" data-view="submissions">
+                            <i class="bi bi-journal-code"></i> 提交
                         </button>
                     </div>
                 </div>
@@ -179,5 +182,6 @@
     <script src="/static/js/scoreboard.js?v=1.8"></script>
     <script src="/static/js/debug.js?v=1.0"></script>
     <script src="/static/js/contest.js?v=1.3"></script>
+    <script src="/static/js/submissions.js?v=1.0"></script>
 </body>
 </html> 

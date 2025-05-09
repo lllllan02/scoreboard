@@ -55,20 +55,22 @@ document.addEventListener('DOMContentLoaded', function() {
     // 设置组别筛选事件
     setupGroupFilter();
     
-    // 设置刷新按钮事件（如果存在）
-    const refreshBtn = document.getElementById('refreshBtn');
-    if (refreshBtn) {
-        refreshBtn.addEventListener('click', function() {
-            // 获取当前激活的筛选类型
-            const activeFilter = document.querySelector('.filter-buttons .btn.active');
-            const currentFilter = activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
-            
-            // 使用当前筛选条件刷新数据
-            loadScoreboardData(currentFilter);
-            showNotification('记分板已刷新', 'success');
-        });
+    // 根据URL中的view参数确定初始视图
+    if (urlView === 'statistics') {
+        // 如果URL指定显示统计视图，则显示统计数据
+        if (typeof window.showStatistics === 'function') {
+            setTimeout(() => window.showStatistics(), 100);
+        }
+    } else if (urlView === 'submissions') {
+        // 如果URL指定显示提交记录视图，则显示提交记录
+        if (typeof window.showSubmissions === 'function') {
+            setTimeout(() => window.showSubmissions(), 100);
+        }
+    } else {
+        // 默认加载排行榜
+        loadScoreboardData(initialFilterType);
     }
-
+    
     // 设置统计按钮事件
     const statisticsBtn = document.getElementById('statisticsBtn');
     if (statisticsBtn) {
@@ -1152,17 +1154,10 @@ function showStatistics() {
         `;
         
         // 切换按钮显示状态
-        const statisticsBtn = document.getElementById('statisticsBtn');
-        const scoreboardBtn = document.getElementById('scoreboardBtn');
-        if (statisticsBtn) {
-            statisticsBtn.style.display = 'none';
-            statisticsBtn.classList.remove('btn-primary');
-            statisticsBtn.classList.add('btn-outline-primary');
-        }
-        if (scoreboardBtn) {
-            scoreboardBtn.style.display = 'inline-block';
-            scoreboardBtn.classList.remove('btn-outline-primary');
-            scoreboardBtn.classList.add('btn-primary');
+        if (typeof window.updateViewButtons === 'function') {
+            window.updateViewButtons('statistics');
+        } else {
+            updateViewButtons('statistics');
         }
         
         // 构建API请求URL，使用原有API接口，增加filter参数
@@ -1200,7 +1195,7 @@ function showStatistics() {
         // 2. 全局保存的初始筛选类型
         // 3. 当前保存的组别
         // 4. 默认值'all'
-        const activeFilter = document.querySelector('.filter-buttons .btn.active');
+        const activeFilter = document.querySelector('.filter-buttons .btn[data-filter].active');
         let filter = 'all';
         
         if (activeFilter) {
@@ -1285,11 +1280,10 @@ function showStatistics() {
         }
         
         // 恢复按钮状态
-        const statisticsBtn = document.getElementById('statisticsBtn');
-        if (statisticsBtn) {
-            statisticsBtn.style.display = 'inline-block';
-            statisticsBtn.classList.remove('btn-outline-primary');
-            statisticsBtn.classList.add('btn-primary');
+        if (typeof window.updateViewButtons === 'function') {
+            window.updateViewButtons('rank');
+        } else {
+            updateViewButtons('rank');
         }
         
         window.loadingStatistics = false;
@@ -1385,17 +1379,10 @@ function loadStatisticsData(apiUrl, filter, container) {
             `;
             
             // 恢复按钮状态
-            const statisticsBtn = document.getElementById('statisticsBtn');
-            const scoreboardBtn = document.getElementById('scoreboardBtn');
-            if (statisticsBtn) {
-                statisticsBtn.style.display = 'inline-block';
-                statisticsBtn.classList.remove('btn-outline-primary');
-                statisticsBtn.classList.add('btn-primary');
-            }
-            if (scoreboardBtn) {
-                scoreboardBtn.style.display = 'none';
-                scoreboardBtn.classList.remove('btn-primary');
-                scoreboardBtn.classList.add('btn-outline-primary');
+            if (typeof window.updateViewButtons === 'function') {
+                window.updateViewButtons('rank');
+            } else {
+                updateViewButtons('rank');
             }
             
             showNotification('获取统计数据失败，请重试', 'danger');
@@ -2364,4 +2351,69 @@ function getTeamColor(teamGroup) {
     };
     
     return colorMap[teamGroup] || '#6c757d'; // 默认灰色
+}
+
+// 显示通知
+function showNotification(message, type = 'info') {
+    // 创建通知元素
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <div class="notification-content">
+            <span>${message}</span>
+            <button class="close-btn">&times;</button>
+        </div>
+    `;
+    
+    // 添加到页面
+    document.body.appendChild(notification);
+    
+    // 添加关闭按钮事件
+    const closeBtn = notification.querySelector('.close-btn');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function() {
+            document.body.removeChild(notification);
+        });
+    }
+    
+    // 3秒后自动消失
+    setTimeout(function() {
+        if (document.body.contains(notification)) {
+            document.body.removeChild(notification);
+        }
+    }, 3000);
+}
+// 确保全局可访问
+window.showNotification = showNotification;
+
+// 更新视图按钮状态
+function updateViewButtons(activeView) {
+    // 获取所有视图按钮
+    const rankBtn = document.getElementById('rankBtn');
+    const statisticsBtn = document.getElementById('statisticsBtn');
+    const submissionsBtn = document.getElementById('submissionsBtn');
+    
+    // 重置所有按钮状态
+    document.querySelectorAll('.filter-buttons .btn[data-view]').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // 设置活动按钮状态
+    switch (activeView) {
+        case 'rank':
+            if (rankBtn) {
+                rankBtn.classList.add('active');
+            }
+            break;
+        case 'statistics':
+            if (statisticsBtn) {
+                statisticsBtn.classList.add('active');
+            }
+            break;
+        case 'submissions':
+            if (submissionsBtn) {
+                submissionsBtn.classList.add('active');
+            }
+            break;
+    }
 }

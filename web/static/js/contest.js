@@ -69,181 +69,102 @@ document.addEventListener('DOMContentLoaded', function() {
     // 验证并设置筛选类型
     const filterType = urlFilter && validFilters.includes(urlFilter) ? urlFilter : 'all';
     
-    // 确保只有一个按钮激活
-    document.querySelectorAll('.filter-buttons .btn').forEach(btn => {
+    // 确保只有一个筛选按钮激活
+    document.querySelectorAll('.filter-buttons .btn[data-filter]').forEach(btn => {
         btn.classList.remove('active');
     });
     
-    // 然后设置正确的按钮为激活状态
-    const activeBtn = document.querySelector(`.filter-buttons .btn[data-filter="${filterType}"]`);
-    if (activeBtn) {
-        activeBtn.classList.add('active');
+    // 然后设置正确的筛选按钮为激活状态
+    const activeFilterBtn = document.querySelector(`.filter-buttons .btn[data-filter="${filterType}"]`);
+    if (activeFilterBtn) {
+        activeFilterBtn.classList.add('active');
+    }
+    
+    // 设置初始视图按钮状态
+    const viewType = urlView || 'rank'; // 默认为排名视图
+    document.querySelectorAll('.filter-buttons .btn[data-view]').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    const activeViewBtn = document.querySelector(`.filter-buttons .btn[data-view="${viewType}"]`);
+    if (activeViewBtn) {
+        activeViewBtn.classList.add('active');
     }
     
     // 设置筛选按钮点击事件
-    document.querySelectorAll('.filter-buttons .btn').forEach(button => {
+    document.querySelectorAll('.filter-buttons .btn[data-filter]').forEach(button => {
         button.addEventListener('click', function() {
-            // 更新按钮状态
-            document.querySelectorAll('.filter-buttons .btn').forEach(btn => {
+            // 更新筛选按钮状态（只更新左侧的筛选按钮）
+            document.querySelectorAll('.filter-buttons .btn[data-filter]').forEach(btn => {
                 btn.classList.remove('active');
             });
             
             this.classList.add('active');
             
-            // 获取筛选类型并调用筛选函数
+            // 获取筛选类型
             const filterType = this.getAttribute('data-filter');
-            filterTeams(filterType);
+            
+            // 获取当前活动视图
+            const isRankActive = document.getElementById('rankBtn')?.classList.contains('active');
+            const isStatisticsActive = document.getElementById('statisticsBtn')?.classList.contains('active');
+            const isSubmissionsActive = document.getElementById('submissionsBtn')?.classList.contains('active');
+            
+            let currentView = '';
+            if (isStatisticsActive) {
+                currentView = 'statistics';
+            } else if (isSubmissionsActive) {
+                currentView = 'submissions';
+            } else {
+                currentView = 'rank';
+            }
+            
+            // 更新URL参数，保持当前视图不变
+            updateURLWithFilter(filterType, currentView);
+            
+            // 根据当前视图刷新相应数据
+            if (currentView === 'statistics' && typeof window.showStatistics === 'function') {
+                window.showStatistics();
+            } else if (currentView === 'submissions' && typeof window.showSubmissions === 'function') {
+                window.showSubmissions();
+            } else {
+                // 默认筛选排行榜
+                filterTeams(filterType);
+            }
         });
     });
     
-    // 设置统计按钮点击事件
-    const statisticsBtn = document.getElementById('statisticsBtn');
-    if (statisticsBtn) {
-        statisticsBtn.addEventListener('click', function() {
-            // 更新URL参数为统计视图
-            updateURLWithFilter(filterType, 'statistics');
+    // 设置视图按钮点击事件（排名、统计、提交）
+    document.querySelectorAll('.filter-buttons .btn[data-view]').forEach(button => {
+        button.addEventListener('click', function() {
+            // 更新视图按钮状态（只更新右侧的视图按钮）
+            document.querySelectorAll('.filter-buttons .btn[data-view]').forEach(btn => {
+                btn.classList.remove('active');
+            });
             
-            if (typeof window.showStatistics === 'function') {
-                window.showStatistics();
-            }
-        });
-    }
-    
-    // 设置排行榜按钮点击事件
-    const scoreboardBtn = document.getElementById('scoreboardBtn');
-    if (scoreboardBtn) {
-        scoreboardBtn.addEventListener('click', function() {
+            this.classList.add('active');
+            
             // 获取当前激活的筛选类型
-            const activeFilter = document.querySelector('.filter-buttons .btn.active');
+            const activeFilter = document.querySelector('.filter-buttons .btn[data-filter].active');
             const filterType = activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
             
-            // 更新URL参数，明确删除视图参数
-            updateURLWithFilter(filterType, '');
+            // 获取视图类型
+            const viewType = this.getAttribute('data-view');
             
-            // 切换按钮显示状态
-            const statisticsBtn = document.getElementById('statisticsBtn');
-            if (statisticsBtn) {
-                statisticsBtn.style.display = 'inline-block';
-                statisticsBtn.classList.remove('btn-outline-primary');
-                statisticsBtn.classList.add('btn-primary');
+            // 更新URL参数
+            updateURLWithFilter(filterType, viewType);
+            
+            // 根据视图类型显示相应内容
+            if (viewType === 'statistics' && typeof window.showStatistics === 'function') {
+                window.showStatistics();
+            } else if (viewType === 'submissions' && typeof window.showSubmissions === 'function') {
+                window.showSubmissions();
+            } else {
+                // 默认显示排行榜
+                if (typeof window.showRankView === 'function') {
+                    window.showRankView();
+                }
             }
-            
-            scoreboardBtn.style.display = 'none';
-            scoreboardBtn.classList.remove('btn-primary');
-            scoreboardBtn.classList.add('btn-outline-primary');
-            
-            console.log('从统计视图切换回排行榜视图');
-            
-            // 获取表格容器
-            const containerElement = document.querySelector('.card-body .table-responsive');
-            if (!containerElement) return;
-            
-            // 显示加载中状态
-            containerElement.innerHTML = `
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary mb-3" role="status">
-                        <span class="visually-hidden">加载中...</span>
-                    </div>
-                    <p class="mb-0">正在重新加载排行榜...</p>
-                </div>
-            `;
-            
-            // 从隐藏的数据元素中获取contestId
-            const contestDataElem = document.getElementById('contest-data');
-            const contestId = contestDataElem ? contestDataElem.getAttribute('data-contest-id') : 
-                            (window.contestInfo ? window.contestInfo.id : 
-                            (typeof contestInfo !== 'undefined' ? contestInfo.id : ''));
-            
-            if (!contestId) {
-                console.error('无法获取比赛ID');
-                showNotification('无法获取比赛ID', 'danger');
-                return;
-            }
-            
-            // 构建API URL
-            let apiUrl = `/api/scoreboard/${contestId}`;
-            
-            // 添加筛选参数
-            const urlParams = new URLSearchParams();
-            if (filterType && filterType !== 'all') {
-                urlParams.append('filter', filterType);
-            }
-            if (urlParams.toString()) {
-                apiUrl += '?' + urlParams.toString();
-            }
-            
-            // 直接请求API，获取最新数据
-            fetch(apiUrl)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('网络请求失败');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    console.log('获取到排行榜数据，准备重建表格');
-                    
-                    // 保存数据到全局变量
-                    window.scoreboardData = data;
-                    
-                    // 获取题目ID
-                    const problemIds = data.contest.problem_id || [];
-                    
-                    // 先创建表格结构
-                    let problemColumnsHtml = '';
-                    problemIds.forEach(id => {
-                        problemColumnsHtml += `<th class="text-center problem-column" scope="col">${id}</th>`;
-                    });
-                    
-                    // 创建表格结构
-                    containerElement.innerHTML = `
-                        <table class="table table-hover mb-0" id="scoreboard-table">
-                            <thead>
-                                <tr>
-                                    <th class="text-center" scope="col">Rank</th>
-                                    <th class="text-center" scope="col">School</th>
-                                    <th class="text-center" scope="col">Team</th>
-                                    <th class="text-center" scope="col">Solved</th>
-                                    <th class="text-center" scope="col">Penalty</th>
-                                    ${problemColumnsHtml}
-                                </tr>
-                            </thead>
-                            <tbody id="scoreboard-body">
-                                <tr>
-                                    <td colspan="${problemIds.length + 5}" class="text-center py-5">
-                                        <div class="spinner-border text-primary" role="status">
-                                            <span class="visually-hidden">加载中...</span>
-                                        </div>
-                                        <p class="mt-2">正在渲染排行榜数据...</p>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    `;
-                    
-                    // 然后渲染数据
-                    if (typeof window.renderScoreboard === 'function') {
-                        console.log('调用renderScoreboard渲染数据');
-                        window.renderScoreboard(data);
-                    } else {
-                        console.error('renderScoreboard函数未定义');
-                        showNotification('渲染函数未定义，无法显示排行榜', 'danger');
-                    }
-                })
-                .catch(error => {
-                    console.error('获取排行榜数据失败:', error);
-                    containerElement.innerHTML = `
-                        <div class="alert alert-danger my-5">
-                            <i class="bi bi-exclamation-triangle me-2"></i>
-                            获取排行榜数据失败: ${error.message}
-                        </div>
-                        <div class="text-center">
-                            <button class="btn btn-primary" onclick="initScoreboardTable('${filterType}')">重试</button>
-                        </div>
-                    `;
-                });
         });
-    }
+    });
     
     // 检查是否应该显示统计页面
     if (urlView === 'statistics') {
@@ -344,6 +265,8 @@ function initScoreboardTable(filterType = 'all') {
 
 // 更新筛选队伍的逻辑
 function filterTeams(filterType) {
+    console.log(`正在筛选队伍: ${filterType}`);
+    
     // 有效的筛选类型列表
     const validFilters = ['all', 'official', 'unofficial', 'girls', 'undergraduate', 'special'];
     
@@ -367,7 +290,7 @@ function filterTeams(filterType) {
         // 在统计视图中，通过showStatistics重新加载统计数据
         if (typeof window.showStatistics === 'function') {
             // 先更新激活的筛选按钮
-            document.querySelectorAll('.filter-buttons .btn').forEach(btn => {
+            document.querySelectorAll('.filter-buttons .btn[data-filter]').forEach(btn => {
                 btn.classList.remove('active');
             });
             const activeBtn = document.querySelector(`.filter-buttons .btn[data-filter="${filterType}"]`);
@@ -405,39 +328,31 @@ function filterTeams(filterType) {
     contestLoadScoreboardData(filterType);
 }
 
-// 更新URL参数的函数
-function updateURLWithFilter(filterType, view = null) {
+// 更新URL中的筛选参数和视图参数
+function updateURLWithFilter(filter, view) {
     // 获取当前URL
     const url = new URL(window.location.href);
-    const params = url.searchParams;
     
-    // 更新筛选类型参数
-    if (filterType && filterType !== 'all') {
-        params.set('filter', filterType);
+    // 更新筛选参数
+    if (filter && filter !== 'all') {
+        url.searchParams.set('filter', filter);
     } else {
-        params.delete('filter'); // 如果是'all'，则删除参数
+        // 如果是'all'，则删除filter参数
+        url.searchParams.delete('filter');
     }
     
-    // 更新视图参数（如果提供）
-    if (view === '') {
-        // 如果传入空字符串，明确要求删除view参数
-        params.delete('view');
-    } else if (view) {
-        // 如果传入非空字符串，设置view参数
-        params.set('view', view);
+    // 更新视图参数
+    if (view) {
+        url.searchParams.set('view', view);
     } else {
-        // 如果当前URL中有view参数，且没有明确要求删除，则保持不变
-        const currentView = params.get('view');
-        if (currentView && view !== '') {
-            // 保留当前的view参数
-        } else {
-            // 否则删除view参数
-            params.delete('view');
-        }
+        // 如果没有指定视图，则删除view参数
+        url.searchParams.delete('view');
     }
     
-    // 更新URL，不刷新页面
-    window.history.replaceState({}, '', url.toString());
+    // 更新浏览器历史记录，但不重新加载页面
+    window.history.pushState({}, '', url.toString());
+    
+    console.log(`URL更新为: ${url.toString()}`);
 }
 
 // 加载排行榜数据的函数
@@ -533,4 +448,25 @@ function showNotification(message, type = 'info') {
             }, 150);
         }, 3000);
     }
-} 
+}
+
+// 显示排名视图
+function showRankView() {
+    console.log('显示排名视图');
+    
+    // 更新按钮状态
+    updateViewButtons('rank');
+    
+    // 获取当前激活的筛选类型
+    const activeFilter = document.querySelector('.filter-buttons .btn.active');
+    const currentFilter = activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
+    
+    // 使用当前筛选条件刷新数据
+    if (typeof window.loadScoreboardData === 'function') {
+        window.loadScoreboardData(currentFilter);
+    }
+}
+
+// 更新全局函数
+window.showRankView = showRankView;
+window.updateURLWithFilter = updateURLWithFilter; 
