@@ -1365,7 +1365,7 @@ function loadStatisticsData(apiUrl, filter, container) {
             }
             
             // 显示统计数据，使用内部函数实现
-            window.internalDisplayStatistics(data, filter, container);
+            displayStatistics(data, filter, container);
             // 重置加载标记
             window.loadingStatistics = false;
         })

@@ -1,0 +1,462 @@
+.filter-buttons {
+    margin-bottom: 8px;
+    display: inline-flex;
+    background-color: #f8f9fa;
+    border-radius: 24px;
+    padding: 3px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.filter-buttons .btn {
+    font-size: 0.85rem;
+    padding: 4px 8px;
+    border-radius: 20px;
+    margin-right: 0;
+    margin-bottom: 0;
+    box-shadow: none;
+    transition: all 0.2s ease;
+    background-color: transparent;
+    border: none;
+    color: #555;
+}
+.filter-buttons .btn:hover {
+    transform: none;
+    box-shadow: none;
+    background-color: rgba(0,0,0,0.05);
+}
+.filter-buttons .btn.active {
+    box-shadow: none;
+    transform: none;
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+}
+.filters-container {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    padding-left: 3px;
+    padding-top: 8px;
+}
+.filter-label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-right: 10px;
+    color: #495057;
+    display: flex;
+    align-items: center;
+}
+.scoreboard-row {
+    transition: opacity 0.3s ease, height 0.3s ease;
+}
+.scoreboard-row.filtered {
+    display: none;
+}
+.girl-team-icon {
+    margin-left: 5px;
+    font-size: 0.9em;
+    color: #e83e8c;
+}
+.team-badge-star {
+    margin-left: 5px;
+    color: #f39c12;
+    font-size: 0.9em;
+}
+#refreshBtn {
+    display: flex;
+    align-items: center;
+    padding: 5px 12px;
+    transition: all 0.2s ease;
+}
+#refreshBtn:hover {
+    transform: translateY(-1px);
+}
+#refreshBtn i {
+    margin-right: 5px;
+}
+.refresh-container {
+    display: flex;
+    justify-content: flex-end;
+}
+@media (max-width: 768px) {
+    .filters-container {
+        margin-bottom: 10px;
+    }
+}
+
+/* 统计相关样式 */
+#statisticsBtn {
+    background-color: #6f42c1;
+    border-color: #6f42c1;
+}
+#statisticsBtn:hover {
+    background-color: #5e35b1;
+    border-color: #5e35b1;
+}
+.problem-stats-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin-top: 15px;
+}
+.problem-stat-item {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 10px;
+    background-color: #f8f9fa;
+}
+.problem-id {
+    font-weight: bold;
+    text-align: center;
+    margin-bottom: 5px;
+    font-size: 1.1rem;
+}
+.submission-heat-map {
+    height: 20px;
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+    margin: 5px 0;
+}
+.heat-bar {
+    height: 100%;
+}
+.heat-bar.accepted {
+    background-color: #28a745;
+}
+.heat-bar.rejected {
+    background-color: #dc3545;
+}
+.heat-bar.pending {
+    background-color: #ffc107;
+}
+.problem-stats-detail {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+.accepted-rate {
+    font-weight: bold;
+}
+ 
+/* 图表样式 */
+.chart-container {
+    position: relative;
+    margin: auto;
+    height: 250px;
+}
+.modal-xl {
+    max-width: 90%;
+}
+.problem-heatmap {
+    margin-top: 15px;
+}
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid rgba(0,0,0,.125);
+}
+.card-title {
+    margin-bottom: 0;
+    color: #495057;
+}
+
+/* 统计相关样式 */
+.statistics-container {
+    padding: 15px 0;
+}
+
+/* 热力图标题样式 */
+.heatmap-title {
+    text-align: center;
+    margin: 15px 0 10px;
+    color: #333;
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+
+/* 题目热力图样式 - 优化版 */
+.problem-heatmap-container {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 0.65fr));
+    gap: 60px;
+    padding: 20px 0 30px;
+    width: 100%;
+    justify-content: center;
+}
+
+.problem-heatmap-card {
+    background-color: white;
+    border-radius: 6px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+    overflow: hidden;
+    border: 1px solid rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s ease, box-shadow 0.3s ease;
+    width: 100%;
+    height: 190px;
+    margin: 0 auto;
+}
+
+.problem-heatmap-card:hover {
+    box-shadow: 0 5px 15px rgba(0,0,0,0.12);
+    transform: translateY(-2px);
+}
+
+.problem-heatmap-header {
+    padding: 10px 15px;
+    background-color: #4CAF50;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+    height: 45px;
+}
+
+.problem-label {
+    font-weight: bold;
+    font-size: 22px;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.problem-header-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.problem-stats {
+    font-size: 13px;
+    opacity: 0.9;
+    font-weight: 500;
+    background-color: rgba(255,255,255,0.2);
+    padding: 3px 7px;
+    border-radius: 12px;
+}
+
+.activity-indicator {
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-top: 3px;
+    background-color: rgba(255,255,255,0.15);
+}
+
+.activity-indicator.high-activity {
+    background-color: rgba(255,255,255,0.3);
+}
+
+.problem-heatmap-body {
+    padding: 15px 15px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-grow: 1;
+}
+
+.heatmap-graphs {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 5px;
+}
+
+.heat-graph {
+    display: flex;
+    height: 14px;
+    width: 100%;
+    border-radius: 2px;
+    overflow: hidden;
+    background-color: #f5f5f5;
+}
+
+.accepted-graph {
+    margin-bottom: 2px;
+}
+
+.heat-bar {
+    flex: 1;
+    height: 100%;
+    transition: opacity 0.2s ease;
+}
+
+.heat-bar:hover {
+    opacity: 1 !important;
+    cursor: pointer;
+    position: relative;
+    box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5);
+    z-index: 2;
+}
+
+.heat-bar[title] {
+    position: relative;
+}
+
+.heat-bar[title]::after {
+    content: attr(title);
+    position: absolute;
+    top: -40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 10;
+    pointer-events: none;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    visibility: hidden;
+}
+
+.heat-bar[title]::before {
+    content: "";
+    position: absolute;
+    bottom: -6px;
+    top: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 6px 6px 0;
+    border-style: solid;
+    border-color: rgba(0, 0, 0, 0.8) transparent transparent;
+    z-index: 10;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+}
+
+/* 使用自定义数据属性控制是否显示提示，鼠标进入后一段时间才添加此属性 */
+.heat-bar[title][data-show-tooltip="true"]::after,
+.heat-bar[title][data-show-tooltip="true"]::before {
+    opacity: 1;
+    visibility: visible;
+}
+
+.heat-bar.accepted {
+    background-color: #28a745;
+}
+
+.heat-bar.rejected {
+    background-color: #dc3545;
+}
+
+.time-axis {
+    position: relative;
+    height: 18px;
+    margin-top: 3px;
+    border-top: 1px solid #ddd;
+}
+
+.time-mark {
+    position: absolute;
+    transform: translateX(-50%);
+    top: 2px;
+    font-size: 11px;
+    color: #777;
+}
+
+.submission-stats {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 8px;
+    border-top: 1px solid #eee;
+    margin-top: auto;
+    font-size: 12px;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.stat-label {
+    color: #666;
+}
+
+.stat-value {
+    font-weight: 500;
+}
+
+.stat-value.accepted {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.stat-value.rejected {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+/* 媒体查询确保在不同屏幕尺寸下正确显示 */
+@media (max-width: 1200px) {
+    .problem-heatmap-container {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 992px) {
+    .problem-heatmap-container {
+        grid-template-columns: repeat(2, minmax(0, 0.65fr));
+        gap: 50px;
+        padding: 15px 0;
+        width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .problem-heatmap-container {
+        grid-template-columns: minmax(0, 0.7fr);
+        gap: 40px;
+        padding: 12px 0;
+        width: 100%;
+    }
+    
+    .problem-heatmap-card {
+        height: 190px;
+    }
+    
+    .heat-bar[title]::after {
+        top: -40px;
+        left: 0;
+        transform: none;
+        font-size: 11px;
+        padding: 4px 8px;
+        width: auto;
+        max-width: 200px;
+    }
+    
+    .heat-bar[title]::before {
+        bottom: -6px;
+        left: 10px;
+        transform: none;
+    }
+    
+    .heat-bar[title]:hover::after,
+    .heat-bar[title]:hover::before {
+        opacity: 1;
+        visibility: visible;
+    }
+}
+
+.heat-bar.hotspot {
+    position: relative;
+    box-shadow: 0 0 4px rgba(255,255,255,0.8) inset;
+}
+
+.heat-bar.hotspot::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: rgba(255,255,255,0.8);
+} 
