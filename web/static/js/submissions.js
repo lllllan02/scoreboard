@@ -1,6 +1,8 @@
-// 提交记录相关功能
 document.addEventListener('DOMContentLoaded', function() {
     console.log('提交记录功能已加载');
+    
+    // 添加全局变量用于存储滚动位置
+    window.lastScrollPosition = 0;
     
     // 获取提交按钮
     const submissionsBtn = document.getElementById('submissionsBtn');
@@ -9,9 +11,69 @@ document.addEventListener('DOMContentLoaded', function() {
             // 获取 URL 参数中的页码，默认为第一页
             const urlParams = new URLSearchParams(window.location.search);
             const page = parseInt(urlParams.get('page')) || 1;
+            
+            // 保存滚动位置
+            window.lastScrollPosition = window.scrollY || window.pageYOffset;
+            
             showSubmissions(page);
         });
         console.log('提交记录按钮事件已绑定');
+    }
+    
+    // 添加排名按钮点击事件
+    const rankBtn = document.getElementById('rankBtn');
+    if (rankBtn) {
+        rankBtn.addEventListener('click', function() {
+            // 保存滚动位置
+            window.lastScrollPosition = window.scrollY || window.pageYOffset;
+            
+            // 获取当前激活的筛选按钮
+            const activeFilter = document.querySelector('.filter-buttons .btn[data-filter].active');
+            let filter = activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
+            
+            // 更新URL
+            updateURLParams(filter, 'rank', 1);
+            
+            // 切换按钮状态
+            updateViewButtons('rank');
+            
+            // 如果存在全局函数showRanking则调用
+            if (typeof window.showRanking === 'function') {
+                window.showRanking();
+            } else {
+                // 没有showRanking函数时重新加载页面
+                window.location.reload();
+            }
+        });
+        console.log('排名按钮事件已绑定');
+    }
+    
+    // 添加统计按钮点击事件
+    const statisticsBtn = document.getElementById('statisticsBtn');
+    if (statisticsBtn) {
+        statisticsBtn.addEventListener('click', function() {
+            // 保存滚动位置
+            window.lastScrollPosition = window.scrollY || window.pageYOffset;
+            
+            // 获取当前激活的筛选按钮
+            const activeFilter = document.querySelector('.filter-buttons .btn[data-filter].active');
+            let filter = activeFilter ? activeFilter.getAttribute('data-filter') : 'all';
+            
+            // 更新URL
+            updateURLParams(filter, 'statistics', 1);
+            
+            // 切换按钮状态
+            updateViewButtons('statistics');
+            
+            // 如果存在全局函数showStatistics则调用
+            if (typeof window.showStatistics === 'function') {
+                window.showStatistics();
+            } else {
+                // 没有showStatistics函数时重新加载页面
+                window.location.reload();
+            }
+        });
+        console.log('统计按钮事件已绑定');
     }
     
     // 如果当前页面视图是提交记录视图，自动加载提交记录
@@ -44,6 +106,12 @@ function showSubmissions(page = 1, pageSize = 15) {
             showNotification('找不到表格容器', 'danger');
             window.loadingSubmissions = false;
             return;
+        }
+        
+        // 保存容器当前的高度，以防止页面跳动
+        const currentHeight = tableContainer.clientHeight;
+        if (currentHeight > 0) {
+            tableContainer.style.minHeight = `${currentHeight}px`;
         }
         
         // 显示加载中状态
@@ -128,6 +196,19 @@ function showSubmissions(page = 1, pageSize = 15) {
                 
                 // 重置加载标记
                 window.loadingSubmissions = false;
+                
+                // 恢复滚动位置后移除固定高度
+                if (window.lastScrollPosition > 0) {
+                    window.scrollTo({
+                        top: window.lastScrollPosition,
+                        behavior: 'auto'
+                    });
+                }
+                
+                // 加载完成后恢复自动高度
+                setTimeout(() => {
+                    tableContainer.style.minHeight = '';
+                }, 100);
             })
             .catch(error => {
                 console.error('提交记录请求失败:', error);
@@ -148,6 +229,19 @@ function showSubmissions(page = 1, pageSize = 15) {
                 
                 // 重置加载标记
                 window.loadingSubmissions = false;
+                
+                // 恢复滚动位置后移除固定高度
+                if (window.lastScrollPosition > 0) {
+                    window.scrollTo({
+                        top: window.lastScrollPosition,
+                        behavior: 'auto'
+                    });
+                }
+                
+                // 加载完成后恢复自动高度
+                setTimeout(() => {
+                    tableContainer.style.minHeight = '';
+                }, 100);
             });
         
     } catch (error) {
@@ -266,7 +360,7 @@ function displaySubmissions(data, filter, container) {
         if (currentPage > 1) {
             tableHTML += `
                 <li class="page-item">
-                    <a class="page-link" href="#" onclick="showSubmissions(${currentPage - 1}, ${pageSize}); return false;">
+                    <a class="page-link" href="#" onclick="event.preventDefault(); window.lastScrollPosition = window.scrollY || window.pageYOffset; showSubmissions(${currentPage - 1}, ${pageSize});">
                         <i class="bi bi-chevron-left"></i>
                     </a>
                 </li>
@@ -295,7 +389,7 @@ function displaySubmissions(data, filter, container) {
         if (startPage > 1) {
             tableHTML += `
                 <li class="page-item">
-                    <a class="page-link" href="#" onclick="showSubmissions(1, ${pageSize}); return false;">1</a>
+                    <a class="page-link" href="#" onclick="event.preventDefault(); window.lastScrollPosition = window.scrollY || window.pageYOffset; showSubmissions(1, ${pageSize});">1</a>
                 </li>
             `;
             
@@ -320,7 +414,7 @@ function displaySubmissions(data, filter, container) {
             } else {
                 tableHTML += `
                     <li class="page-item">
-                        <a class="page-link" href="#" onclick="showSubmissions(${i}, ${pageSize}); return false;">${i}</a>
+                        <a class="page-link" href="#" onclick="event.preventDefault(); window.lastScrollPosition = window.scrollY || window.pageYOffset; showSubmissions(${i}, ${pageSize});">${i}</a>
                     </li>
                 `;
             }
@@ -340,7 +434,7 @@ function displaySubmissions(data, filter, container) {
             // 添加最后一页按钮
             tableHTML += `
                 <li class="page-item">
-                    <a class="page-link" href="#" onclick="showSubmissions(${totalPages}, ${pageSize}); return false;">${totalPages}</a>
+                    <a class="page-link" href="#" onclick="event.preventDefault(); window.lastScrollPosition = window.scrollY || window.pageYOffset; showSubmissions(${totalPages}, ${pageSize});">${totalPages}</a>
                 </li>
             `;
         }
@@ -349,7 +443,7 @@ function displaySubmissions(data, filter, container) {
         if (currentPage < totalPages) {
             tableHTML += `
                 <li class="page-item">
-                    <a class="page-link" href="#" onclick="showSubmissions(${currentPage + 1}, ${pageSize}); return false;">
+                    <a class="page-link" href="#" onclick="event.preventDefault(); window.lastScrollPosition = window.scrollY || window.pageYOffset; showSubmissions(${currentPage + 1}, ${pageSize});">
                         <i class="bi bi-chevron-right"></i>
                     </a>
                 </li>
@@ -494,8 +588,8 @@ function updateURLParams(filter, view, page) {
         url.searchParams.delete('page');
     }
     
-    // 更新浏览器历史记录，但不重新加载页面
-    window.history.pushState({}, '', url.toString());
+    // 使用replaceState而不是pushState，这样不会影响滚动位置
+    window.history.replaceState({}, '', url.toString());
     
     console.log(`URL已更新: ${url.toString()}`);
 }
