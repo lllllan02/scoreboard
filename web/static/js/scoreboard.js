@@ -800,7 +800,7 @@ function updateProblemColumnStyles(problemIds, balloonColors, problemStatsMap) {
             // 创建新的表头内容，题号和通过数量都使用继承的文字颜色
             column.innerHTML = `
                 <div style="color: inherit;">${problemId}</div>
-                <div class="small problem-stats" style="color: inherit;">${solvedCount}</div>
+                <div class="small problem-stats" style="color: inherit; background: none;">${solvedCount}</div>
             `;
             console.log(`更新题目 ${problemId} 内容，包含解题数: ${solvedCount}`);
         } else {

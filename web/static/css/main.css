@@ -292,6 +292,7 @@ body {
     opacity: 0.9;
     margin-top: 0.15rem;
     font-weight: normal;
+    background: transparent !important;
 }
 
 .scoreboard-row:hover {
